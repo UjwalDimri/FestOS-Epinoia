@@ -21,6 +21,7 @@ import { findDuplicateCandidates } from '../import/dedupe.js';
 import { env } from '../config/env.js';
 import { participantContingent } from '../modules/participants/participantContingent.routes.js';
 import { accommodationApi } from '../modules/accommodation/accommodation.routes.js';
+import { logisticsApi } from '../modules/logistics/logistics.routes.js';
 
 export const api = express.Router();
 
@@ -44,6 +45,7 @@ api.post('/auth/login', ah(async (req, res) => {
 
 api.use(authenticate);
 api.use(accommodationApi);
+api.use(logisticsApi);
 api.use(participantContingent);
 
 api.get('/me', ah(async (req, res) => {
