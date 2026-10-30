@@ -1,6 +1,6 @@
 import { env } from './config/env.js';
 import { connectDb } from './config/db.js';
-import { createApp } from './app.js';
+import { createApp } from './appFactory.js';
 import { ensureAssumptions } from './services/assumptions.js';
 import { loadConstraintSettings } from './constraints/index.js';
 import { migrateTeam1SchemaFields } from './services/schemaMigrations.js';
