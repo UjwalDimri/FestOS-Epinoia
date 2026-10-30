@@ -1,4 +1,4 @@
-# FestOS — Epinoia 2026 control portal (backend + basic frontend)
+# FestOS — Epinoia 2026 control portal (backend + frontend)
 
 FestOS is an internal control portal for the people running Aarohan. It checks the data, plans scarce resources
 (beds, slots, equipment, merch, meals), lets an organizer inject a disruption and preview its impact, commits only with a
@@ -6,25 +6,30 @@ reason, and records every change in a tamper-evident audit log.
 
 ## Quick start (about 5 minutes)
 
-Requirements: Node 20+, MongoDB 6+ as a **replica set** (transactions need one). Atlas M0 works too.
+Requirements: Node 20+, MongoDB 6+ as a **replica set** (transactions need one). Atlas M0 works too. Run each section in a separate VS Code terminal and leave it open.
 
 ```bash
-# 1. Database: local replica set (one time)
-mongod --replSet rs0 --dbpath ./mdb --port 27017 --bind_ip 127.0.0.1 --fork --logpath ./mdb.log
-cd server && npm run init:replica         # one time: initiates rs0
+# 1. Database: local replica set (Terminal 1)
+cd backend
+mkdir -p mdb-run
+mongod --replSet rs0 --dbpath ./mdb-run --port 27018 --bind_ip 127.0.0.1
 
-# 2. Server
+# 2. Backend (Terminal 2)
+cd backend
 cp .env.example .env                      # edit JWT_SECRET and, optionally, ANTHROPIC_API_KEY
 npm install
+npm run init:replica                      # one time per database
 npm run seed                              # imports the 11 CSVs from ../data/raw, creates test accounts, activates starting plans
 npm run dev                               # http://localhost:4000
 
-# 3. Client (second terminal)
-cd ../client && npm install && npm run dev   # http://localhost:5173
+# 3. Frontend (Terminal 3)
+cd frontend
+npm install
+npm run dev -- --host 127.0.0.1           # http://localhost:5173
 ```
 
-Reset the demo at any time: `cd server && npm run reset:demo` (under 10 seconds).
-Tests: `cd server && npm test` (15 engine tests, no database needed).
+Reset the demo at any time: `cd backend && npm run reset:demo` (under 10 seconds).
+Tests: `cd backend && npm test` (15 engine tests, no database needed).
 
 ## Test accounts
 

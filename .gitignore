@@ -1,4 +1,7 @@
 node_modules/
 dist/
+.vite/
 .env
 *.log
+backend/mdb/
+backend/mdb-run/

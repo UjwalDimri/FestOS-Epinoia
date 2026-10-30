@@ -1,5 +1,5 @@
 {
-  "name": "festos-client",
+  "name": "festos-frontend",
   "private": true,
   "version": "1.0.0",
   "type": "module",
