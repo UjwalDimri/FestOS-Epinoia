@@ -20,6 +20,7 @@ import { toCsv } from '../utils/csv.js';
 import { findDuplicateCandidates } from '../import/dedupe.js';
 import { env } from '../config/env.js';
 import { participantContingent } from '../modules/participants/participantContingent.routes.js';
+import { createVendor, updateVendor, vendorCompliance, vendorView, recordMeal } from '../services/vendors.js'
 import { accommodationApi } from '../modules/accommodation/accommodation.routes.js';
 import { logisticsApi } from '../modules/logistics/logistics.routes.js';
 
@@ -444,7 +445,12 @@ api.post('/merch/replace', requirePerm('merch:replace'), ah(async (req, res) => 
 
 // ---------- vendors and food
 api.get('/vendors', requirePerm('vendors:read'), ah(async (req, res) => {
-  res.json({ vendors: await M.Vendor.find({}).lean(), incidents: await M.VendorIncident.find({}).lean() });
+  const [vendors, incidents] = await Promise.all([M.Vendor.find({}).sort({ vendorId: 1 }).lean(), M.VendorIncident.find({}).sort({ start: -1 }).limit(200).lean()]);
+  res.json({ vendors: vendors.map((vendor) => vendorView(vendor, req.user.role)), incidents });
+}));
+
+api.post('/vendors', requirePerm('vendors:write'), ah(async (req, res) => {
+  res.status(201).json({ vendor: await createVendor({ user: req.user, body: req.body || {} }) });
 }));
 
 api.get('/vendors/coverage', requirePerm('vendors:read'), ah(async (req, res) => {
@@ -453,13 +459,27 @@ api.get('/vendors/coverage', requirePerm('vendors:read'), ah(async (req, res) =>
   res.json({ ...foodRun(state), days, meals: ['breakfast', 'lunch', 'dinner'] });
 }));
 
+api.get('/vendors/:id/compliance', requirePerm('vendors:read'), ah(async (req, res) => {
+  res.json({ compliance: await vendorCompliance(req.params.id, await loadState()) });
+}));
+
+api.get('/vendors/:id', requirePerm('vendors:read'), ah(async (req, res) => {
+  const vendor = await M.Vendor.findOne({ vendorId: req.params.id }).lean();
+  if (!vendor) throw notFound(`No vendor ${req.params.id}`);
+  const [incidents, meals] = await Promise.all([
+    M.VendorIncident.find({ vendorId: vendor.vendorId }).sort({ start: -1 }).limit(50).lean(),
+    M.MealLog.find({ vendorId: vendor.vendorId }).sort({ date: -1, meal: 1 }).limit(100).lean(),
+  ]);
+  res.json({ vendor: vendorView(vendor, req.user.role), incidents, meals });
+}));
+
+api.put('/vendors/:id', requirePerm('vendors:write'), ah(async (req, res) => {
+  res.json({ vendor: await updateVendor({ user: req.user, vendorId: req.params.id, body: req.body || {} }) });
+}));
+
 api.post('/vendors/:id/log-meal', requirePerm('vendors:write'), ah(async (req, res) => {
   const { date, meal, served } = req.body || {};
-  return res.json(await runCommand({ user: req.user, action: 'MEAL_LOGGED', entity: { type: 'Vendor', id: req.params.id }, event: 'meal.logged' },
-    async () => {
-      await M.MealLog.updateOne({ vendorId: req.params.id, date, meal }, { served: Number(served), loggedBy: req.user.email }, { upsert: true });
-      return { summary: { vendorId: req.params.id, date, meal, served }, result: { logged: true } };
-    }));
+  return res.json(await recordMeal({ user: req.user, vendorId: req.params.id, date, meal, served }));
 }));
 
 // ---------- disruptions

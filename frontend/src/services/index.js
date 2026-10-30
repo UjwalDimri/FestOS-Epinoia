@@ -12,6 +12,15 @@ export const disruptionsService = { list: () => call('disruptions', '/disruption
 export const auditService = { list: (limit = 100) => call('audit', `/audit?limit=${limit}`), verify: () => call('verify', '/audit/verify') };
 export const dataQualityService = { headcount: () => call('headcount', '/data/headcount'), issues: (query = '') => call('issues', `/data/issues${query}`), duplicates: () => call('duplicates', '/data/duplicates'), dismissDuplicate: (id, reason) => write(`/data/duplicates/${encodeURIComponent(id)}/dismiss`, { method: 'POST', body: { reason } }, () => mocks.duplicateDismissed(id)), resolveIssue: (id, accept, reason) => write(`/data/issues/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: { accept, reason } }, () => mocks.issueResolved(id, accept)) };
 export const logisticsService = { inventory: () => call('inventory', '/inventory'), merch: () => call('merch', '/merch'), vendors: () => call('vendors', '/vendors'), coverage: () => call('coverage', '/vendors/coverage') };
+export const vendorsService = {
+ list: () => call('vendors', '/vendors'),
+ detail: (id) => call('vendorDetail', `/vendors/${encodeURIComponent(id)}`),
+ compliance: (id) => call('vendorCompliance', `/vendors/${encodeURIComponent(id)}/compliance`),
+ coverage: () => call('coverage', '/vendors/coverage'),
+ create: (body) => write('/vendors', { method: 'POST', body }, () => mocks.savedVendor(body)),
+ update: (id, body) => write(`/vendors/${encodeURIComponent(id)}`, { method: 'PUT', body }, () => mocks.savedVendor({ ...body, vendorId: id })),
+ logMeal: (id, body) => write(`/vendors/${encodeURIComponent(id)}/log-meal`, { method: 'POST', body }, () => mocks.loggedMeal({ ...body, vendorId: id })),
+};
 export const merchandiseService = {
  catalogue: () => call('merchandiseCatalogue', '/merchandise'),
  issues: () => call('merchandiseIssues', '/merchandise/issues'),

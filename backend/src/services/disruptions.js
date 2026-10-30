@@ -898,7 +898,7 @@ async function previewVendorShutdown(state, p) {
     vendorId: v.vendorId,
     start: from,
     end: to,
-    reason: 'Shutdown',
+    reason: typeof p.reason === 'string' && p.reason.trim() ? p.reason.trim() : 'Shutdown',
   };
 
   const before = foodRun(state);

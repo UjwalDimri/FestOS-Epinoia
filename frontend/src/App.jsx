@@ -11,11 +11,12 @@ import DataQuality from './pages/DataQuality.jsx';
 import Audit from './pages/Audit.jsx';
 import Logistics from './pages/Logistics.jsx';
 import Merchandise from './pages/Merchandise.jsx';
+import Vendors from './pages/Vendors.jsx';
 import AccommodationOps from './pages/AccommodationOps.jsx';
 const PAGES = [
- ['dashboard','Control tower',Dashboard], ['participants','People',Participants], ['plans','Accommodation & schedule',Plans], ['accommodation','Accommodation desk',AccommodationOps],
- ['disruptions','Disruptions',Disruptions], ['data','Data quality',DataQuality], ['audit','Audit',Audit], ['logistics','Logistics',Logistics], ['merchandise','Merchandise',Merchandise],
-];
+ ['dashboard','Control tower',Dashboard], ['participants','People',Participants], ['plans','Accommodation & schedule',Plans],
+ ['disruptions','Disruptions',Disruptions], ['data','Data quality',DataQuality], ['audit','Audit',Audit], ['logistics','Logistics',Logistics], ['merchandise','Merchandise',Merchandise], ['accommodation', 'Accommodation desk', AccommodationOps], ['vendors','Food & vendors',Vendors];
+
 export default function App() {
  const [user,setUser]=useState(null); const [page,setPage]=useState(location.hash.slice(1)||'dashboard'); const [menuOpen,setMenuOpen]=useState(false);
  const [theme,setTheme]=useState(()=>localStorage.getItem('festos_theme')||'light');
