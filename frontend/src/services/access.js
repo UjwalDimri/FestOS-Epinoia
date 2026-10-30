@@ -1,11 +1,11 @@
 const ROLES = {
- festival_director: ['dashboard','participants','plans','disruptions','data','audit','logistics','staff'],
- hospitality: ['dashboard','participants','plans','disruptions','data','audit','logistics','staff'],
- registration_desk: ['dashboard','participants','plans','disruptions','data','audit','logistics','staff'],
- events_team: ['dashboard','participants','plans','disruptions','data','audit','logistics','staff'],
- logistics_head: ['dashboard','participants','plans','disruptions','data','audit','logistics','staff'],
- merchandise_desk: ['dashboard','participants','plans','disruptions','data','audit','logistics','staff'],
- food_coordinator: ['dashboard','participants','plans','disruptions','data','audit','logistics','staff'],
+ festival_director: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
+ hospitality: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
+ registration_desk: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
+ events_team: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
+ logistics_head: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
+ merchandise_desk: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
+ food_coordinator: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
  volunteer: ['dashboard','participants','staff'],
 };
 export const roleCanSee = (role, page) => (ROLES[role] || []).includes(page);

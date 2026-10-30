@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { allocate, nightKeys } from '../src/engines/allocation.js';
+import { allocate, nightKeys, buildLocations } from '../src/engines/allocation.js';
 import { normalizeParticipant, parseEquipment } from '../src/import/normalize.js';
 import { scorePair, findDuplicateCandidates } from '../src/import/dedupe.js';
 import { dietCoverage } from '../src/engines/food.js';
 import { activeFor, resolve } from '../src/constraints/registry.js';
 import '../src/constraints/index.js';
 import { parseIST } from '../src/utils/time.js';
+import { summarizeStock } from '../src/modules/logistics/logistics.service.js';
 
 const A = {
   cleaningBufferHours: 3, externalBudgetINR: 1e9, campusRadiusKm: 1,
@@ -25,12 +26,40 @@ test('nightKeys counts nights by 23:00 presence', () => {
   assert.equal(nightKeys(parseIST('2026-10-31 10:00'), parseIST('2026-10-31 18:00')).length, 0);
 });
 
+test('logistics stock summary separates usable, reserved and unavailable stock', () => {
+  const stock = summarizeStock([
+    { state: 'available', qty: 8 }, { state: 'reserved', qty: 2 },
+    { state: 'issued', qty: 3 }, { state: 'damaged', qty: 1 },
+    { state: 'missing', qty: 1 }, { state: 'in_transit', qty: 4 },
+  ]);
+  assert.equal(stock.available, 8);
+  assert.equal(stock.reserved, 2);
+  assert.equal(stock.issued, 3);
+  assert.equal(stock.damaged, 1);
+  assert.equal(stock.missing, 1);
+  assert.equal(stock.inTransit, 4);
+  assert.equal(stock.totalUsable, 13);
+});
+
 test('a bed is never shared by overlapping stays', () => {
   const r = run([person({ participantId: 'A' }), person({ participantId: 'B' })], [room()]);
   const placed = r.allocations.filter((a) => a.status !== 'unplaced');
   assert.equal(placed.length, 1);
   const unplaced = r.allocations.find((a) => a.status === 'unplaced');
   assert.ok(unplaced.reasonCodes.includes('NIGHT_SHORTAGE'));
+});
+
+test('allocation respects explicit bed slots and ignores rooms that are not ready', () => {
+  const r = room({ capacity: 2, beds: [{ bedId: 'R1-B1', status: 'blocked' }, { bedId: 'R1-B2', status: 'available' }] });
+  const result = run([person()], [r]);
+  assert.equal(result.allocations[0].bed.bedNo, 2);
+  assert.equal(run([person()], [room({ status: 'maintenance' })]).allocations[0].status, 'unplaced');
+});
+
+test('closed external properties and uncontracted beds are excluded from allocation', () => {
+  assert.equal(run([person({ housingCategory: 'unconfirmed' })], [], [prop({ status: 'closed' })]).allocations[0].status, 'unplaced');
+  const capped = run([person({ housingCategory: 'unconfirmed' }), person({ participantId: 'P2', housingCategory: 'unconfirmed' })], [], [prop({ beds: 5, contractedBedCapacity: 1 })]);
+  assert.equal(capped.allocations.filter((a) => a.status !== 'unplaced').length, 1);
 });
 
 test('cleaning buffer blocks a turnaround that is too quick', () => {

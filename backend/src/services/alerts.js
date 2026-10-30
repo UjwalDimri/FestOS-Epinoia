@@ -53,8 +53,10 @@ export async function computeAlerts(now = new Date()) {
   for (const v of state.vendors) {
     const exp = v.certExpiry ? new Date(v.certExpiry) : null;
     const override = v.complianceOverride?.until && new Date(v.complianceOverride.until) > now;
-    if (exp && exp < now && !override) add({ key: `VND_CERT_EXPIRED_${v.vendorId}`, ruleId: 'VND_CERT_EXPIRED', severity: 'high', ownerRole: 'food_coordinator',
-      title: `${v.name}: hygiene certificate expired`, detail: `${v.menu}. Blocked until the Director overrides.`, entityRefs: [v.vendorId], suggestedAction: 'Pull from the coverage matrix or get a renewed certificate.' });
+    if (!exp) add({ key: `VND_CERT_MISSING_${v.vendorId}`, ruleId: 'VND_CERT_MISSING', severity: 'high', ownerRole: 'food_coordinator',
+      title: `${v.name}: hygiene certificate is missing`, detail: `${v.menu}. This vendor is excluded from meal coverage until a valid certificate is recorded.`, entityRefs: [v.vendorId], suggestedAction: 'Verify and record the vendor hygiene certificate.' });
+    else if (exp < now && !override) add({ key: `VND_CERT_EXPIRED_${v.vendorId}`, ruleId: 'VND_CERT_EXPIRED', severity: 'high', ownerRole: 'food_coordinator',
+      title: `${v.name}: hygiene certificate expired`, detail: `${v.menu}. Blocked until a current certificate is recorded.`, entityRefs: [v.vendorId], suggestedAction: 'Pull from the coverage matrix or get a renewed certificate.' });
     else if (exp && exp - now < 24 * 3600000 && exp >= now) add({ key: `VND_CERT_SOON_${v.vendorId}`, ruleId: 'VND_CERT_SOON', severity: 'medium', ownerRole: 'food_coordinator',
       title: `${v.name}: certificate expires within 24h`, entityRefs: [v.vendorId], suggestedAction: 'Confirm renewal before the next meal.' });
   }
@@ -74,10 +76,8 @@ export async function computeAlerts(now = new Date()) {
 
   // Merch
   const merch = await M.MerchStock.find({}).lean();
-  const issued = await M.MerchIssue.aggregate([{ $match: { kind: 'original' } }, { $group: { _id: { item: '$item', size: '$size' }, n: { $sum: 1 } } }]);
   for (const s of merch) {
-    const used = issued.find((i) => i._id.item === s.item && i._id.size === s.size)?.n || 0;
-    const left = s.quantity - s.reserved - used;
+    const left = s.quantity - s.reserved - (s.issued || 0);
     if (left <= 0 && s.quantity > 0) add({ key: `MERCH_OUT_${s.item}_${s.size}`.replace(/\s+/g, '_'), ruleId: 'MERCH_OUT', severity: 'medium', ownerRole: 'merchandise_desk',
       title: `${s.item} size ${s.size} is out`, suggestedAction: 'Substitute a size and log it, or reorder.' });
   }

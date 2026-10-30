@@ -49,6 +49,7 @@ export function validateDisruptionParams(type, params) {
       break;
     case 'vendor_shutdown':
       requiredText(params, 'vendorId'); windowParams(params);
+      if (params.reason !== undefined && (typeof params.reason !== 'string' || params.reason.trim().length < 5)) throw badRequest('reason must contain at least 5 characters');
       break;
     case 'duplicate_merch_claim':
       requiredText(params, 'participantId'); requiredText(params, 'item');

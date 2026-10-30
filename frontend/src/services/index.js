@@ -23,5 +23,20 @@ export const staffService = {
  createAvailability: (body) => write('/staff/availability', { method: 'POST', body }, () => mocks.savedStaffAvailability(body)),
  checkIn: (shiftId) => write('/staff/attendance/check-in', { method: 'POST', body: { shiftId } }, () => mocks.staffAttendanceAction(shiftId, 'check-in')),
  checkOut: (shiftId) => write('/staff/attendance/check-out', { method: 'POST', body: { shiftId } }, () => mocks.staffAttendanceAction(shiftId, 'check-out')),
+export const vendorsService = {
+ list: () => call('vendors', '/vendors'),
+ detail: (id) => call('vendorDetail', `/vendors/${encodeURIComponent(id)}`),
+ compliance: (id) => call('vendorCompliance', `/vendors/${encodeURIComponent(id)}/compliance`),
+ coverage: () => call('coverage', '/vendors/coverage'),
+ create: (body) => write('/vendors', { method: 'POST', body }, () => mocks.savedVendor(body)),
+ update: (id, body) => write(`/vendors/${encodeURIComponent(id)}`, { method: 'PUT', body }, () => mocks.savedVendor({ ...body, vendorId: id })),
+ logMeal: (id, body) => write(`/vendors/${encodeURIComponent(id)}/log-meal`, { method: 'POST', body }, () => mocks.loggedMeal({ ...body, vendorId: id })),
+};
+export const merchandiseService = {
+ catalogue: () => call('merchandiseCatalogue', '/merchandise'),
+ issues: () => call('merchandiseIssues', '/merchandise/issues'),
+ save: (body) => write('/merchandise', { method: 'POST', body }, () => mocks.savedMerchandise(body)),
+ issue: (body) => write('/merchandise/issue', { method: 'POST', body }, () => mocks.issuedMerchandise(body)),
+ return: (body) => write('/merchandise/return', { method: 'POST', body }, () => mocks.returnedMerchandise(body)),
 };
 export const exportService = { downloadCsv: (kind) => DEMO_MODE ? Promise.resolve(mocks.exportCsv(kind)) : apiFile(`/export/${encodeURIComponent(kind)}.csv`) };

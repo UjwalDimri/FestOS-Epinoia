@@ -4,7 +4,7 @@ export function PageHeader({ title, description }) { return <div className="page
 export function StatusBadge({ children, tone = 'info' }) { return <span className={`badge badge-${tone}`}>{children}</span>; }
 export function MetricCard({ label, value }) { return <div className="card stat"><div className="n">{value ?? 'Unavailable'}</div><div className="l">{label}</div></div>; }
 export function EmptyState({ children = 'No records to show.' }) { return <p className="muted" role="status">{children}</p>; }
-export function LoadingState() { return <p className="muted" role="status" aria-live="polite">Loading…</p>; }
+export function LoadingState() { return <p className="loading-state" role="status" aria-live="polite"><span className="loading-dots" aria-hidden="true"><i/><i/><i/></span><span>Loading…</span></p>; }
 export function ErrorState({ error, retry }) { return <div className="err" role="alert">{error}{retry && <button className="ghost" onClick={retry}>Retry</button>}</div>; }
 export function WarningBanner({ children }) { return <div className="warning" role="status">{children}</div>; }
 export class ErrorBoundary extends React.Component {
@@ -34,7 +34,7 @@ export function ConfirmDialog({ open, title, children, onCancel, onConfirm, busy
     return () => { document.removeEventListener('keydown', onKey); previous?.focus?.(); };
   }, [open]);
   if (!open) return null;
-  return <div className="dialog-backdrop"><section ref={ref} role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="card dialog"><h2 id="dialog-title">{title}</h2><div>{children}</div><div className="row"><button className="ghost" onClick={onCancel} disabled={busy}>Cancel</button><button className="primary" onClick={onConfirm} disabled={busy}>{busy ? 'Working…' : confirmLabel}</button></div></section></div>;
+  return <div className="dialog-backdrop"><section ref={ref} role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="card dialog"><h2 id="dialog-title">{title}</h2><div>{children}</div><div className="row"><button className="ghost" onClick={onCancel} disabled={busy}>Cancel</button><button className="primary" onClick={onConfirm} disabled={busy} aria-busy={busy}>{busy ? <><span className="button-loader" aria-hidden="true"/>Working…</> : confirmLabel}</button></div></section></div>;
 }
 export function AccessibleDialog({ title, children, onClose, labelledBy = 'accessible-dialog-title' }) {
   const ref = React.useRef(null), closeRef = React.useRef(onClose);
