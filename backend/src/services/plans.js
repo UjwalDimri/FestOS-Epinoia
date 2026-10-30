@@ -23,12 +23,14 @@ export async function activateAccommodationPlan({ user, planId, reason }) {
   });
 }
 
-export async function buildSchedulePlan({ user, planId }) {
-  const state = await loadState();
+export async function buildSchedulePlan({ user, planId, state: currentState, session } = {}) {
+  const state = currentState || await loadState();
   const run = scheduleRun(state);
   const id = planId || `SCH-${Date.now().toString(36).toUpperCase()}`;
-  await M.Plan.create({ planId: id, type: 'schedule', strategy: 'greedy-arrival-heats', status: 'draft', metrics: run.summary, createdBy: user.email });
-  await M.Slot.insertMany([...run.slots, ...run.unscheduled.map((u) => ({ ...u, status: 'unscheduled' }))].map((s) => ({ ...s, planId: id })));
+  const plan = new M.Plan({ planId: id, type: 'schedule', strategy: 'greedy-arrival-heats', status: 'draft', metrics: run.summary, createdBy: user.email });
+  await plan.save(session ? { session } : undefined);
+  const slots = [...run.slots, ...run.unscheduled.map((u) => ({ ...u, status: 'unscheduled' }))].map((s) => ({ ...s, planId: id }));
+  if (slots.length) await M.Slot.insertMany(slots, session ? { session } : undefined);
   return { planId: id, metrics: run.summary };
 }
 

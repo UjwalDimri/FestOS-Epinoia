@@ -2,34 +2,47 @@
 // preview() reads state and computes impact WITHOUT writing. commit() recomputes, then writes inside runCommand (audited).
 import * as M from '../models/index.js';
 import { loadState, accommodationRun, scheduleRun, foodRun, activePlan } from './state.js';
-import { runCommand } from './command.js';
-import { buildSchedulePlan, activateAccommodationPlan } from './plans.js';
+import { checkRisk, runCommand } from './command.js';
+import { buildSchedulePlan } from './plans.js';
 import { issueMerch } from './merch.js';
 import { parseIST, fmtIST, overlaps, addMinutes } from '../utils/time.js';
-import { badRequest, notFound } from '../utils/errors.js';
+import { badRequest, conflict, notFound } from '../utils/errors.js';
 import { DISRUPTION_COMMITTERS } from '../shared/roles.js';
 import { templateExplanation } from './explain.js';
 import { arrivalAfterDelay, assertDisruptionTransactionsSupported, validateDisruptionParams } from './disruptionValidation.js';
 import { supportsTransactions } from '../config/db.js';
 
 const money = (n) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+const jsonSafe = (value) => JSON.parse(JSON.stringify(value));
 
 // ---------- helpers
 function withClosure(list, key, closure) {
   return list.map((x) => (key(x) ? { ...x, closures: [...(x.closures || []), closure] } : x));
 }
 
-async function currentAccommodation() {
-  const plan = await activePlan('accommodation');
+async function currentAccommodation(session) {
+  const plan = await activePlan('accommodation', session);
   if (!plan) throw badRequest('No active accommodation plan. Generate and activate one first.');
-  const allocs = await M.Allocation.find({ planId: plan.planId, status: { $ne: 'released' } }).lean();
+  const query = M.Allocation.find({ planId: plan.planId, status: { $ne: 'released' } });
+  if (session) query.session(session);
+  const allocs = await query.lean();
   return { plan, allocs };
 }
 
 const placedOnly = (a) => a.filter((x) => x.bed?.kind && x.status !== 'unplaced');
 
+async function claimForCommit(disruptionId, session) {
+  const disruption = await M.Disruption.findOneAndUpdate(
+    { disruptionId, status: 'previewed' }, { status: 'committing' }, { new: true, session },
+  );
+  if (disruption) return { disruption };
+  const current = await M.Disruption.findOne({ disruptionId }).session(session).lean();
+  if (current?.status === 'committed') return { replay: current.result };
+  throw conflict(`Disruption cannot be committed while it is ${current?.status || 'unavailable'}`);
+}
+
 // ---------- 1. Hostel closure (pipe burst, power failure)
-async function previewHostelClosure(state, p) {
+async function previewHostelClosure(state, p, _user, session) {
   const from = p.from ? parseIST(p.from) : parseIST(state.assumptions.festWindow.start);
   const to = p.to ? parseIST(p.to) : parseIST(state.assumptions.festWindow.end);
   if (!from || !to) throw badRequest('from/to must be "YYYY-MM-DD HH:mm" IST');
@@ -38,7 +51,7 @@ async function previewHostelClosure(state, p) {
   if (!roomIds.size) throw notFound('No room matches that roomId or block');
   const closure = { start: from, end: to, reason: 'Closed by Hospitality', disruptionId: p.__id || 'pending' };
   const rooms = withClosure(state.rooms, target, closure);
-  const { plan, allocs } = await currentAccommodation();
+  const { plan, allocs } = await currentAccommodation(session);
   const displaced = placedOnly(allocs).filter((a) => a.bed.kind === 'hostel' && roomIds.has(a.bed.roomId) && overlaps(a.checkIn, a.checkOut, from, to));
   const displacedIds = new Set(displaced.map((a) => a.participantId));
   const pinned = placedOnly(allocs).filter((a) => !displacedIds.has(a.participantId));
@@ -75,7 +88,7 @@ async function applyHostelClosure(session, c, user) {
 }
 
 // ---------- 2. Late contingent (bus delayed)
-async function previewLateContingent(state, p) {
+async function previewLateContingent(state, p, _user, session) {
   const cid = p.contingentId;
   const newArrival = parseIST(p.newArrival);
   if (!newArrival) throw badRequest('newArrival must be "YYYY-MM-DD HH:mm" IST');
@@ -84,15 +97,17 @@ async function previewLateContingent(state, p) {
   const shift = (x) => ({ ...x, arrival: arrivalAfterDelay(x.arrival, newArrival) });
   const moved = members.map(shift);
   const movedIds = new Set(moved.map((m) => m.participantId));
-  const { plan, allocs } = await currentAccommodation();
+  const { plan, allocs } = await currentAccommodation(session);
   const pinned = placedOnly(allocs).filter((a) => !movedIds.has(a.participantId));
   const affectedAllocs = allocs.filter((a) => movedIds.has(a.participantId));
   const run = accommodationRun(state, { pinned, people: moved.filter((m) => m.accommodationRequested), budgetMode: 'respect' });
   const people = state.people.map((x) => (movedIds.has(x.participantId) ? shift(x) : x));
   const ready = state.assumptions.arrivalReadyMinutes ?? 60;
   const sched = scheduleRun(state, { participants: people });
-  const current = await activePlan('schedule');
-  const slots = current ? await M.Slot.find({ planId: current.planId, participantIds: { $in: [...movedIds] } }).lean() : [];
+  const current = await activePlan('schedule', session);
+  const slotQuery = current ? M.Slot.find({ planId: current.planId, participantIds: { $in: [...movedIds] } }) : null;
+  if (slotQuery && session) slotQuery.session(session);
+  const slots = slotQuery ? await slotQuery.lean() : [];
   const lateSlots = slots.filter((s) => new Date(s.start) < addMinutes(newArrival, ready));
   return {
     risk: 'medium',
@@ -119,15 +134,17 @@ async function applyLateContingent(session, c) {
 }
 
 // ---------- 3. Duplicate record (merge, keep audit)
-async function previewDuplicateRecord(state, p) {
+async function previewDuplicateRecord(state, p, _user, session) {
   const keep = state.people.find((x) => x.participantId === p.keepId);
   const drop = state.people.find((x) => x.participantId === p.dropId);
   if (!keep || !drop) throw notFound('Both participant IDs must exist');
   if (keep.participantId === drop.participantId) throw badRequest('Choose two different records');
   const regs = state.registrations.filter((r) => r.participantId === drop.participantId);
   const overlapRegs = regs.filter((r) => state.registrations.some((k) => k.participantId === keep.participantId && k.eventId === r.eventId));
-  const merch = await M.MerchIssue.find({ participantId: drop.participantId, kind: 'original' }).lean();
-  const { plan, allocs } = await currentAccommodation();
+  const merchQuery = M.MerchIssue.find({ participantId: drop.participantId, kind: 'original' });
+  if (session) merchQuery.session(session);
+  const merch = await merchQuery.lean();
+  const { plan, allocs } = await currentAccommodation(session);
   const dropAlloc = allocs.find((a) => a.participantId === drop.participantId && a.status !== 'unplaced' && a.bed?.kind);
   return {
     risk: merch.length ? 'high' : 'medium',
@@ -181,7 +198,7 @@ async function applyEquipmentFailure(session, c, user) {
 }
 
 // ---------- 5. Venue change (rain, closure)
-async function previewVenueChange(state, p) {
+async function previewVenueChange(state, p, _user, session) {
   const from = p.from ? parseIST(p.from) : parseIST(state.assumptions.festWindow.start);
   const to = p.to ? parseIST(p.to) : parseIST(state.assumptions.festWindow.end);
   const v = state.venues.find((x) => x.venueId === p.venueId);
@@ -189,8 +206,10 @@ async function previewVenueChange(state, p) {
   const venues = withClosure(state.venues, (x) => x.venueId === p.venueId, { start: from, end: to, reason: 'Venue change', disruptionId: 'pending' });
   const before = scheduleRun(state).summary;
   const after = scheduleRun(state, { venues }).summary;
-  const current = await activePlan('schedule');
-  const affected = current ? await M.Slot.find({ planId: current.planId, venueId: p.venueId, start: { $gte: from, $lt: to } }).lean() : [];
+  const current = await activePlan('schedule', session);
+  const slotQuery = current ? M.Slot.find({ planId: current.planId, venueId: p.venueId, start: { $gte: from, $lt: to } }) : null;
+  if (slotQuery && session) slotQuery.session(session);
+  const affected = slotQuery ? await slotQuery.lean() : [];
   return {
     risk: 'medium',
     summary: { venue: v.name, window: { from: fmtIST(from), to: fmtIST(to) }, slotsInVenueWindow: affected.length, before, after,
@@ -236,8 +255,10 @@ async function applyVendorShutdown(session, c) {
 }
 
 // ---------- 7. Duplicate merch claim
-async function previewDuplicateMerch(state, p) {
-  const existing = await M.MerchIssue.findOne({ participantId: p.participantId, item: p.item, kind: 'original' }).lean();
+async function previewDuplicateMerch(state, p, _user, session) {
+  const query = M.MerchIssue.findOne({ participantId: p.participantId, item: p.item, kind: 'original' });
+  if (session) query.session(session);
+  const existing = await query.lean();
   if (!existing) return { risk: 'low', summary: { allowed: true, note: 'No prior issue; a normal issue would succeed.' }, changes: { type: 'duplicate_merch_claim', participantId: p.participantId, item: p.item, blocked: false } };
   return {
     risk: 'medium',
@@ -297,7 +318,6 @@ export async function commitDisruption(disruptionId, user, reason) {
   assertDisruptionTransactionsSupported(supportsTransactions());
   const d = await M.Disruption.findOne({ disruptionId });
   if (!d) throw notFound('No such disruption');
-  if (d.status !== 'previewed') throw badRequest(`Disruption is already ${d.status}`);
   const t = TYPES[d.type];
   validateDisruptionParams(d.type, d.params || {});
   const allowedRoles = DISRUPTION_COMMITTERS[d.type] || [];
@@ -305,29 +325,69 @@ export async function commitDisruption(disruptionId, user, reason) {
     const { forbidden } = await import('../utils/errors.js');
     throw forbidden(`Only ${allowedRoles.join(', ') || 'the Festival Director'} may commit ${d.type}`);
   }
-  const state = await loadState();
-  const fresh = await t.preview(state, d.params || {}, user);
+  checkRisk(user, d.requiresRisk || 'medium', reason);
+  if (d.status === 'committed') {
+    if (d.result?.committed || typeof d.result?.blocked === 'boolean') return d.result;
+    return { committed: true, summary: d.result?.summary || d.preview };
+  }
+  if (d.status !== 'previewed') throw badRequest(`Disruption is already ${d.status}`);
   if (d.type === 'duplicate_merch_claim') {
-    return runCommand({ user, action: 'MERCH_DUP_REJECTED', entity: { type: 'Participant', id: d.params.participantId }, reason, risk: 'medium', disruptionId }, async () => {
-      d.status = 'committed'; d.committedBy = { userId: user.userId, role: user.role }; d.reason = reason; d.committedAt = new Date(); await d.save();
-      return { summary: { rejected: true }, result: { blocked: fresh.summary.allowed === false, original: fresh.summary.original || null } };
+    return runCommand({ user, action: 'MERCH_DUP_REJECTED', entity: { type: 'Participant', id: d.params.participantId }, reason, risk: 'medium', disruptionId }, async (session) => {
+      const state = await loadState(session);
+      const fresh = await t.preview(state, d.params || {}, user, session);
+      checkRisk(user, fresh.risk, reason);
+      const claimed = await claimForCommit(disruptionId, session);
+      if (claimed.replay) return { skipAudit: true, result: claimed.replay };
+      const commitDoc = claimed.disruption;
+      commitDoc.status = 'committed'; commitDoc.committedBy = { userId: user.userId, role: user.role };
+      commitDoc.reason = reason; commitDoc.committedAt = new Date();
+      commitDoc.result = jsonSafe({ blocked: fresh.summary.allowed === false, original: fresh.summary.original || null });
+      await commitDoc.save({ session });
+      return { summary: { rejected: true }, result: commitDoc.result };
     });
   }
-  const risk = fresh.risk;
-  const result = await runCommand({ user, action: `DISRUPTION_${d.type.toUpperCase()}`, entity: { type: 'Disruption', id: disruptionId }, reason, risk, disruptionId, event: `disruption.${d.type}` },
+  const result = await runCommand({ user, action: `DISRUPTION_${d.type.toUpperCase()}`, entity: { type: 'Disruption', id: disruptionId }, reason, risk: d.requiresRisk || 'medium', disruptionId, event: `disruption.${d.type}` },
     async (session) => {
+      const state = await loadState(session);
+      const fresh = await t.preview(state, d.params || {}, user, session);
+      checkRisk(user, fresh.risk, reason);
+      const claimed = await claimForCommit(disruptionId, session);
+      if (claimed.replay) return { skipAudit: true, result: claimed.replay };
+      const commitDoc = claimed.disruption;
       const out = await t.apply(session, fresh.changes, user);
-      d.status = 'committed'; d.committedBy = { userId: user.userId, role: user.role }; d.reason = reason; d.committedAt = new Date();
-      d.result = { ...out, summary: fresh.summary };
-      await d.save({ session });
-      return { summary: out.summary, result: { committed: true, summary: fresh.summary } };
+      let replannedSchedule = null;
+      if (d.type === 'venue_change' || d.type === 'equipment_failure') {
+        let scheduleState = state;
+        if (d.type === 'venue_change') {
+          const closure = { start: fresh.changes.from, end: fresh.changes.to, reason: 'Venue change', disruptionId };
+          scheduleState = { ...state, venues: withClosure(state.venues, (venue) => venue.venueId === d.params.venueId, closure) };
+        } else {
+          const stock = state.stock.map((entry) => ({ ...entry }));
+          const available = stock.find((entry) => entry.item === fresh.changes.item && entry.location === fresh.changes.location && entry.state === 'available');
+          available.qty -= fresh.changes.qty;
+          const damaged = stock.find((entry) => entry.item === fresh.changes.item && entry.location === fresh.changes.location && entry.state === 'damaged');
+          if (damaged) damaged.qty += fresh.changes.qty;
+          else stock.push({ item: fresh.changes.item, location: fresh.changes.location, state: 'damaged', qty: fresh.changes.qty });
+          scheduleState = { ...state, stock };
+        }
+        const plan = await buildSchedulePlan({ user, state: scheduleState, session });
+        await M.Plan.updateMany({ type: 'schedule', status: 'active' }, { status: 'superseded' }, { session });
+        const schedulePlan = await M.Plan.findOne({ planId: plan.planId }).session(session);
+        schedulePlan.status = 'active'; schedulePlan.activatedBy = user.email; schedulePlan.activatedAt = new Date();
+        schedulePlan.reason = `Re-planned after ${d.type}`;
+        await schedulePlan.save({ session });
+        replannedSchedule = plan.planId;
+      }
+      commitDoc.status = 'committed'; commitDoc.committedBy = { userId: user.userId, role: user.role };
+      commitDoc.reason = reason; commitDoc.committedAt = new Date();
+      commitDoc.result = jsonSafe({ committed: true, summary: fresh.summary, ...(replannedSchedule ? { replannedSchedule } : {}) });
+      await commitDoc.save({ session });
+      return {
+        summary: { ...out.summary, ...(replannedSchedule ? { replannedSchedule } : {}) },
+        result: commitDoc.result,
+        additionalAudits: replannedSchedule ? [{ action: 'PLAN_ACTIVATE', entity: { type: 'Plan', id: replannedSchedule },
+          reason: `Re-planned after ${d.type}`, risk: 'low', summary: { planId: replannedSchedule, type: 'schedule' } }] : [],
+      };
     });
-  // Schedule-affecting changes re-plan the schedule and activate the new plan, so consequences are visible.
-  if (['venue_change', 'equipment_failure'].includes(d.type)) {
-    const sp = await buildSchedulePlan({ user });
-    const { activateSchedulePlan } = await import('./plans.js');
-    await activateSchedulePlan({ user, planId: sp.planId, reason: `Re-planned after ${d.type}` });
-    result.replannedSchedule = sp.planId;
-  }
   return result;
 }

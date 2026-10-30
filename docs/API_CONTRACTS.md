@@ -8,7 +8,7 @@ P1 disruption contracts inspected for Stage P1. These routes are mounted under `
 |---|---|---|---|---|
 | `GET /api/disruptions` | Any authenticated role | None | `200 { types: string[], recent: Disruption[] }` (latest 30) | `401`, `500` |
 | `POST /api/disruptions/preview` | Role with `disruptions:preview` | `{ type, params }` | `200 { disruptionId, type, risk, summary, committers, explanation }` | `400` invalid type/params; `401`; `403`; `404` missing referenced entity; `500` |
-| `POST /api/disruptions/:id/commit` | Director, or the type-specific role below | `{ reason: string }` (at least 5 trimmed characters) | `200 { committed, summary }`; venue/equipment may also include `replannedSchedule`; duplicate merch returns its existing rejection result | `400` stale/already committed or invalid reason; `401`; `403`; `404`; `409` duplicate-key conflicts; `500` |
+| `POST /api/disruptions/:id/commit` | Director, or the type-specific role below | `{ reason: string }` (at least 5 trimmed characters) | `200 { committed, summary }`; venue/equipment may also include `replannedSchedule`; duplicate merch returns its existing rejection result. Repeated/concurrent commits return the stored result without a second mutation or audit entry. | `400` invalid status or reason; `401`; `403`; `404`; `409` transaction support unavailable or conflicting claim; `500` |
 
 ### Preview parameter shapes
 
@@ -28,3 +28,5 @@ P1 disruption contracts inspected for Stage P1. These routes are mounted under `
 The Festival Director can commit every type. In addition: `hostel_closure` → Hospitality; `late_contingent` → Hospitality, Events, or Registration; `duplicate_record` → Registration; `equipment_failure` → Logistics; `venue_change` → Events; `vendor_shutdown` → Food; `duplicate_merch_claim` → Merchandise; `constraint_change` → Hospitality or Events. Risk checks and a reason are still enforced server-side.
 
 No shared response shape changed in this stage. The fix aligns the existing `constraint_change` type with its intended commit roles.
+
+Disruption commits require a MongoDB replica set with transactions. Venue/equipment schedule generation and activation are committed in the same transaction as the disruption, with both operations audited. The P1 integration suite is isolated by a strict database-name guard; run it with `MONGODB_TEST_URI='mongodb://127.0.0.1:27018/festos_test?replicaSet=rs0' npm run test:integration` after starting the local replica set. The suite only deletes documents from collections in the guarded `festos_test` database.

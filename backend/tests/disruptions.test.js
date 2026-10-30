@@ -44,3 +44,10 @@ test('disruption commits refuse to run without transaction support', () => {
   assert.throws(() => assertDisruptionTransactionsSupported(false), { status: 409 });
   assert.doesNotThrow(() => assertDisruptionTransactionsSupported(true));
 });
+
+test('integration database URI guard accepts only festos_test', async () => {
+  const { assertIsolatedTestDbUri } = await import('../src/services/disruptionTestDbGuard.js');
+  assert.equal(assertIsolatedTestDbUri('mongodb://127.0.0.1:27019/festos_test?replicaSet=rs0'), 'festos_test');
+  assert.throws(() => assertIsolatedTestDbUri('mongodb://127.0.0.1:27018/festos_demo?replicaSet=rs0'), /must use database "festos_test"/);
+  assert.throws(() => assertIsolatedTestDbUri('mongodb://127.0.0.1:27018/?replicaSet=rs0'), /must use database "festos_test"/);
+});
