@@ -1,4 +1,3 @@
-```javascript
 // The 8 real roles from core_team.csv, their permissions, and which participant fields each may see.
 
 export const ROLES = {
@@ -265,4 +264,3 @@ export const REVEALABLE = {
     'food_coordinator',
   ],
 };
-```
