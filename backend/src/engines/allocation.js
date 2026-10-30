@@ -17,16 +17,16 @@ export function buildLocations(rooms, properties, assumptions) {
   const locs = [];
   for (const r of rooms) {
     locs.push({
-      key: r.roomId, kind: 'hostel', roomId: r.roomId, pool: r.pool, accessible: r.accessible, floor: r.floor, capacity: r.capacity,
+      key: r.roomId, kind: 'hostel', roomId: r.roomId, gender: r.gender, accessibility: r.accessibility, floor: r.floor, capacity: r.capacity,
       site: 'campus', group: r.block, costPerNight: 0, distanceKm: 0, transport: 'yes', status: r.status, closures: r.closures || [],
       beds: Array.from({ length: r.capacity }, (_, i) => ({ bedNo: i + 1, intervals: [] })),
     });
   }
   for (const p of properties) {
     locs.push({
-      key: p.propertyId, kind: 'external', propertyId: p.propertyId, name: p.name, pool: 'any', accessible: p.accessible, floor: null,
+      key: p.propertyId, kind: 'external', propertyId: p.propertyId, name: p.propertyName, gender: 'any', accessibility: p.accessibility, floor: null,
       capacity: p.beds, site: (p.distanceKm ?? 99) <= radius ? 'campus' : p.propertyId, group: p.propertyId,
-      costPerNight: p.costPerBedPerNight, distanceKm: p.distanceKm, transport: p.transport, status: p.status, closures: p.closures || [],
+      costPerNight: p.costPerBedPerNight, distanceKm: p.distanceKm, transportAvailability: p.transportAvailability, status: p.status, closures: p.closures || [],
       beds: Array.from({ length: p.beds }, (_, i) => ({ bedNo: i + 1, intervals: [] })),
     });
   }
@@ -49,14 +49,14 @@ function occupy(bed, checkIn, checkOut, bufferMs) {
 const addTo = (map, key, val) => { if (!map.has(key)) map.set(key, new Set()); map.get(key).add(val); };
 
 export function eligibleDemand(p) {
-  return p.active && !p.quarantined && p.accommodationRequested === true && p.arrival && p.departure && new Date(p.departure) > new Date(p.arrival);
+  return p.active && !p.quarantined && p.accommodationRequested === true && p.arrivalDateTime && p.departureDateTime && new Date(p.departureDateTime) > new Date(p.arrivalDateTime);
 }
 
 function personDemand(p) {
   return {
     participantId: p.participantId, contingentId: p.contingentId, personType: p.personType, isLeader: !!p.isLeader,
-    housingCategory: p.housingCategory, accessibility: p.accessibility, isMinor: !!p.isMinor,
-    checkIn: new Date(p.arrival), checkOut: new Date(p.departure),
+    housingCategory: p.housingCategory, accessibilityNeeds: p.accessibilityNeeds, isMinor: !!p.isMinor,
+    checkIn: new Date(p.arrivalDateTime), checkOut: new Date(p.departureDateTime),
   };
 }
 
@@ -112,7 +112,7 @@ export function allocate({ people, rooms, properties, contingents, assumptions, 
   for (const d of demand) size.set(d.contingentId, (size.get(d.contingentId) || 0) + 1);
   const phase = (d) => {
     if (d.personType === 'escort') return 0;
-    if (d.accessibility?.status === 'declared') return 1;
+    if (d.accessibilityNeeds?.status === 'declared') return 1;
     if (d.isMinor) return 2;
     return 3;
   };
@@ -175,7 +175,7 @@ export function allocate({ people, rooms, properties, contingents, assumptions, 
     const codes = [];
     if (loc.kind === 'hostel') codes.push(d.housingCategory === 'female' ? 'POOL_MATCH_FEMALE' : d.housingCategory === 'male' ? 'POOL_MATCH_MALE' : 'EXTERNAL_ANY_POOL');
     else codes.push(d.housingCategory === 'unconfirmed' && d.personType !== 'escort' ? 'GENDER_UNCONFIRMED_PROVISIONAL' : 'EXTERNAL_ANY_POOL');
-    if (d.accessibility?.status === 'declared') codes.push('ACCESSIBLE_BED');
+    if (d.accessibilityNeeds?.status === 'declared') codes.push('ACCESSIBLE_BED');
     if (d.isMinor) codes.push('ESCORT_COVERED');
     if (d.personType === 'escort') codes.push('ESCORT_SITE');
     if (d.isLeader) codes.push('LEADER_WITH_GROUP');
@@ -194,7 +194,7 @@ export function allocate({ people, rooms, properties, contingents, assumptions, 
 
   for (const p of notEligible) {
     unplaced.push({ participantId: p.participantId, contingentId: p.contingentId, personType: p.personType, bed: { kind: null },
-      checkIn: p.arrival, checkOut: p.departure, nights: 0, costPerNight: 0, cost: 0, status: 'unplaced',
+      checkIn: p.arrivalDateTime, checkOut: p.departureDateTime, nights: 0, costPerNight: 0, cost: 0, status: 'unplaced',
       reasonCodes: ['QUARANTINED'], relaxed: [] });
   }
 
@@ -237,12 +237,12 @@ export function computeMetrics({ allocations, people, locations, assumptions, st
   const contingentsSplit = [...sites.values()].filter((s) => s.size > 1).length;
 
   const personById = new Map(people.map((p) => [p.participantId, p]));
-  const accessibleNeeded = people.filter((p) => eligibleDemand(p) && p.accessibility?.status === 'declared').length;
-  const accessiblePlaced = placed.filter((a) => personById.get(a.participantId)?.accessibility?.status === 'declared').length;
+  const accessibleNeeded = people.filter((p) => eligibleDemand(p) && p.accessibilityNeeds?.status === 'declared').length;
+  const accessiblePlaced = placed.filter((a) => personById.get(a.participantId)?.accessibilityNeeds?.status === 'declared').length;
 
   // Per-night demand vs supply
   const nightDemand = new Map();
-  for (const p of people.filter(eligibleDemand)) for (const k of nightKeys(p.arrival, p.departure)) nightDemand.set(k, (nightDemand.get(k) || 0) + 1);
+  for (const p of people.filter(eligibleDemand)) for (const k of nightKeys(p.arrivalDateTime, p.departureDateTime)) nightDemand.set(k, (nightDemand.get(k) || 0) + 1);
   const nightPlaced = new Map();
   for (const a of placed) for (const k of nightKeys(a.checkIn, a.checkOut)) nightPlaced.set(k, (nightPlaced.get(k) || 0) + 1);
   const perNight = [...nightDemand.keys()].sort().map((night) => {

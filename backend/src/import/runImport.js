@@ -28,7 +28,7 @@ export async function runImport({ dataDir = env.dataDir, log = console.log } = {
   // --- contingents
   const contingentRows = readCsv(dataDir, 'contingents.csv');
   const contingents = contingentRows.map((r) => ({
-    contingentId: r.contingent_id, college: r.college, leaderName: r.leader, escortName: r.escort,
+    contingentId: r.contingent_id, college: r.college, leader: r.leader, escort: r.escort,
     strengthDeclared: Number(r.strength_declared), preferencesRaw: r.preferences, preferences: parsePreferences(r.preferences),
   }));
 
@@ -49,15 +49,15 @@ export async function runImport({ dataDir = env.dataDir, log = console.log } = {
   }
   for (const c of contingents) {
     const members = byContingent.get(c.contingentId) || [];
-    const matches = members.filter((p) => p.name.trim().toLowerCase() === String(c.leaderName).trim().toLowerCase());
+    const matches = members.filter((p) => p.name.trim().toLowerCase() === String(c.leader).trim().toLowerCase());
     if (matches.length === 1) {
       matches[0].isLeader = true;
       c.leaderParticipantId = matches[0].participantId;
-      issues.push(issue('LEADER_LINKED_BY_NAME', 'low', 'Contingent', c.contingentId, `Leader ${c.leaderName} linked to ${matches[0].participantId} by name only; verify at check-in.`));
+      issues.push(issue('LEADER_LINKED_BY_NAME', 'low', 'Contingent', c.contingentId, `Leader ${c.leader} linked to ${matches[0].participantId} by name only; verify at check-in.`));
     } else if (matches.length > 1) {
-      issues.push(issue('LEADER_AMBIGUOUS', 'medium', 'Contingent', c.contingentId, `${matches.length} participants are named ${c.leaderName}; leader not linked.`, { candidates: matches.map((m) => m.participantId) }));
+      issues.push(issue('LEADER_AMBIGUOUS', 'medium', 'Contingent', c.contingentId, `${matches.length} participants are named ${c.leader}; leader not linked.`, { candidates: matches.map((m) => m.participantId) }));
     } else {
-      issues.push(issue('LEADER_NOT_IN_PARTICIPANTS', 'medium', 'Contingent', c.contingentId, `Leader ${c.leaderName} has no participant record in this contingent.`));
+      issues.push(issue('LEADER_NOT_IN_PARTICIPANTS', 'medium', 'Contingent', c.contingentId, `Leader ${c.leader} has no participant record in this contingent.`));
     }
     const actual = members.length;
     if (actual !== c.strengthDeclared) {
@@ -70,19 +70,19 @@ export async function runImport({ dataDir = env.dataDir, log = console.log } = {
   // --- escorts: named in contingents.csv but absent from participants.csv; created as people who need a bed
   for (const c of contingents) {
     const members = byContingent.get(c.contingentId) || [];
-    const valid = members.filter((m) => !m.quarantined && m.arrival && m.departure);
-    const arrival = valid.length ? new Date(Math.min(...valid.map((m) => m.arrival.getTime()))) : festStart;
-    const departure = valid.length ? new Date(Math.max(...valid.map((m) => m.departure.getTime()))) : festEnd;
+    const valid = members.filter((m) => !m.quarantined && m.arrivalDateTime && m.departureDateTime);
+    const arrivalDateTime = valid.length ? new Date(Math.min(...valid.map((m) => m.arrivalDateTime.getTime()))) : festStart;
+    const departureDateTime = valid.length ? new Date(Math.max(...valid.map((m) => m.departureDateTime.getTime()))) : festEnd;
     const escortId = `ESC-${c.contingentId}`;
     c.escortPersonId = escortId;
     participants.push({
-      participantId: escortId, name: c.escortName, contingentId: c.contingentId, college: c.college, personType: 'escort',
-      genderAsGiven: null, housingCategory: 'unconfirmed', age: null, isMinor: false, contact: '',
-      accessibility: { status: 'not_declared', needs: [] }, dietary: { status: 'unknown', needs: [] },
-      arrival, departure, accommodationRequested: true, tshirtSize: null, quarantined: false, active: true,
+      participantId: escortId, name: c.escort, contingentId: c.contingentId, college: c.college, personType: 'escort',
+      gender: null, housingCategory: 'unconfirmed', age: null, isMinor: false, contact: '',
+      accessibilityNeeds: { status: 'not_declared', needs: [] }, dietaryNeeds: { status: 'unknown', needs: [] },
+      arrivalDateTime, departureDateTime, accommodationRequested: true, tshirtSize: null, quarantined: false, active: true,
       attrs: { source: 'contingents.csv', assumption: 'Escorts need a private bed near the group; stay spans the contingent window' },
     });
-    issues.push(issue('ESCORT_CREATED', 'info', 'Participant', escortId, `Escort ${c.escortName} created from contingents.csv (not in participants.csv). Stay ${fmtIST(arrival)} to ${fmtIST(departure)} is assumed.`));
+    issues.push(issue('ESCORT_CREATED', 'info', 'Participant', escortId, `Escort ${c.escort} created from contingents.csv (not in participants.csv). Stay ${fmtIST(arrivalDateTime)} to ${fmtIST(departureDateTime)} is assumed.`));
   }
   await M.Contingent.insertMany(contingents);
   await M.Participant.insertMany(participants);
@@ -164,14 +164,14 @@ export async function runImport({ dataDir = env.dataDir, log = console.log } = {
   // --- hostels and external stays
   const hostelRows = readCsv(dataDir, 'hostels.csv');
   await M.Room.insertMany(hostelRows.map((r) => ({
-    roomId: r.room_id, block: r.block, floor: Number(r.floor), pool: r.gender === 'girls' ? 'girls' : r.gender === 'boys' ? 'boys' : 'all_gender',
-    capacity: Number(r.capacity), accessible: r.accessibility === 'yes' ? 'yes' : r.accessibility === 'no' ? 'no' : 'unknown',
+    roomId: r.room_id, block: r.block, floor: Number(r.floor), gender: r.gender === 'girls' ? 'girls' : r.gender === 'boys' ? 'boys' : 'all_gender',
+    capacity: Number(r.capacity), accessibility: r.accessibility === 'yes' ? 'yes' : r.accessibility === 'no' ? 'no' : 'unknown',
     status: r.status === 'available' ? 'available' : 'closed', closures: [],
   })));
   const extRows = readCsv(dataDir, 'external_stays.csv');
   await M.ExternalProperty.insertMany(extRows.map((r) => ({
-    propertyId: r.property_id, name: r.property_name, beds: Number(r.beds), costPerBedPerNight: Number(r.cost_per_bed_per_night),
-    distanceKm: Number(r.distance_km), transport: r.transport_availability, accessible: 'unknown', status: 'available', closures: [],
+    propertyId: r.property_id, propertyName: r.property_name, beds: Number(r.beds), costPerBedPerNight: Number(r.cost_per_bed_per_night),
+    distanceKm: Number(r.distance_km), transportAvailability: r.transport_availability, accessibility: 'unknown', status: 'available', closures: [],
   })));
   for (const r of extRows) {
     issues.push(issue('ACCESSIBILITY_UNKNOWN', 'medium', 'ExternalProperty', r.property_id, `${r.property_name}: no accessibility data. Treated as unknown until someone verifies it.`));

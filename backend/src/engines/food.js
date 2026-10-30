@@ -4,8 +4,8 @@ import { MEALS } from '../shared/enums.js';
 
 export function onSiteAt(people, when) {
   const t = new Date(when).getTime();
-  return people.filter((p) => p.active !== false && !p.quarantined && p.arrival && p.departure
-    && new Date(p.arrival).getTime() <= t && t < new Date(p.departure).getTime());
+  return people.filter((p) => p.active !== false && !p.quarantined && p.arrivalDateTime && p.departureDateTime
+    && new Date(p.arrivalDateTime).getTime() <= t && t < new Date(p.departureDateTime).getTime());
 }
 
 export function vendorOpenFor(vendor, meal, mealWindows) {
@@ -25,13 +25,13 @@ export function vendorActive(vendor, day, incidents, overrides) {
 export function dietCoverage({ vendors, incidents = [], people, days, mealWindows, dietServedBy, overrides = {} }) {
   const rows = [];
   const groupOf = (p) => {
-    const needs = p.dietary?.status === 'declared' ? p.dietary.needs : [];
+    const needs = p.dietaryNeeds?.status === 'declared' ? p.dietaryNeeds.needs : [];
     if (needs.includes('nut_allergy')) return 'nut_allergy';
     if (needs.includes('gluten_free')) return 'gluten_free';
     if (needs.includes('jain')) return 'jain';
     if (needs.includes('halal')) return 'halal';
     if (needs.includes('vegetarian')) return 'vegetarian';
-    if (p.dietary?.status === 'unknown') return 'unknown';
+    if (p.dietaryNeeds?.status === 'unknown') return 'unknown';
     return 'non_vegetarian';
   };
   for (const day of days) {

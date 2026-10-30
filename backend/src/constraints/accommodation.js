@@ -10,9 +10,9 @@ register({
   appliesTo: () => true,
   check: (p, loc) => {
     if (loc.kind === 'external') return { ok: true };
-    if (loc.pool === 'all_gender') return { ok: true };
-    if (p.housingCategory === 'female') return loc.pool === 'girls' ? { ok: true } : { ok: false, reason: 'NO_SUITABLE_POOL' };
-    if (p.housingCategory === 'male') return loc.pool === 'boys' ? { ok: true } : { ok: false, reason: 'NO_SUITABLE_POOL' };
+    if (loc.gender === 'all_gender') return { ok: true };
+    if (p.housingCategory === 'female') return loc.gender === 'girls' ? { ok: true } : { ok: false, reason: 'NO_SUITABLE_POOL' };
+    if (p.housingCategory === 'male') return loc.gender === 'boys' ? { ok: true } : { ok: false, reason: 'NO_SUITABLE_POOL' };
     if (p.housingCategory === 'unconfirmed') return { ok: false, reason: 'GENDER_UNCONFIRMED' };
     return { ok: false, reason: 'NO_SUITABLE_POOL' };
   },
@@ -21,17 +21,17 @@ register({
 register({
   id: 'ACC_ACCESSIBLE_BED', scope: 'accommodation', kind: 'hard', risk: 'high',
   label: 'Declared accessibility needs get a bed that meets them',
-  appliesTo: (p) => p.accessibility?.status === 'declared',
+  appliesTo: (p) => p.accessibilityNeeds?.status === 'declared',
   check: (p, loc, ctx) => {
     const map = ctx.assumptions.accessibilityRequirementMap || {};
-    const needs = new Set((p.accessibility.needs || []).map((n) => map[n] || 'accessible'));
+    const needs = new Set((p.accessibilityNeeds.needs || []).map((n) => map[n] || 'accessible'));
     for (const req of needs) {
       if (loc.kind === 'external') {
-        if (loc.accessible === 'yes') continue;
-        return { ok: false, reason: loc.accessible === 'unknown' ? 'ACCESS_UNVERIFIED' : 'NO_ACCESSIBLE_BED' };
+        if (loc.accessibility === 'yes') continue;
+        return { ok: false, reason: loc.accessibility === 'unknown' ? 'ACCESS_UNVERIFIED' : 'NO_ACCESSIBLE_BED' };
       }
-      if (req === 'accessible' && loc.accessible !== 'yes') return { ok: false, reason: 'NO_ACCESSIBLE_BED' };
-      if (req === 'ground_floor' && !(loc.floor === 0 || loc.accessible === 'yes')) return { ok: false, reason: 'NO_ACCESSIBLE_BED' };
+      if (req === 'accessible' && loc.accessibility !== 'yes') return { ok: false, reason: 'NO_ACCESSIBLE_BED' };
+      if (req === 'ground_floor' && !(loc.floor === 0 || loc.accessibility === 'yes')) return { ok: false, reason: 'NO_ACCESSIBLE_BED' };
     }
     return { ok: true };
   },
@@ -80,7 +80,7 @@ register({
   id: 'ACC_TRANSPORT_REQUIRED', scope: 'accommodation', kind: 'hard', risk: 'medium', defaultEnabled: false,
   label: 'External properties must have full shuttle transport (excludes "limited")',
   appliesTo: () => true,
-  check: (p, loc) => (loc.kind !== 'external' || loc.transport === 'yes' ? { ok: true } : { ok: false, reason: 'OUTSIDE_RADIUS' }),
+  check: (p, loc) => (loc.kind !== 'external' || loc.transportAvailability === 'yes' ? { ok: true } : { ok: false, reason: 'OUTSIDE_RADIUS' }),
 });
 
 // Soft rules: return a penalty; the allocator multiplies by the strategy weight named in weightKey.
