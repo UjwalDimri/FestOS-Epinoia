@@ -7,6 +7,7 @@ import { dietCoverage } from '../src/engines/food.js';
 import { activeFor, resolve } from '../src/constraints/registry.js';
 import '../src/constraints/index.js';
 import { parseIST } from '../src/utils/time.js';
+import { summarizeStock } from '../src/modules/logistics/logistics.service.js';
 
 const A = {
   cleaningBufferHours: 3, externalBudgetINR: 1e9, campusRadiusKm: 1,
@@ -23,6 +24,21 @@ const run = (people, rooms, props = [], extra = {}) => allocate({ people, rooms,
 test('nightKeys counts nights by 23:00 presence', () => {
   assert.deepEqual(nightKeys(parseIST('2026-10-31 07:00'), parseIST('2026-11-03 07:00')), ['2026-10-31', '2026-11-01', '2026-11-02']);
   assert.equal(nightKeys(parseIST('2026-10-31 10:00'), parseIST('2026-10-31 18:00')).length, 0);
+});
+
+test('logistics stock summary separates usable, reserved and unavailable stock', () => {
+  const stock = summarizeStock([
+    { state: 'available', qty: 8 }, { state: 'reserved', qty: 2 },
+    { state: 'issued', qty: 3 }, { state: 'damaged', qty: 1 },
+    { state: 'missing', qty: 1 }, { state: 'in_transit', qty: 4 },
+  ]);
+  assert.equal(stock.available, 8);
+  assert.equal(stock.reserved, 2);
+  assert.equal(stock.issued, 3);
+  assert.equal(stock.damaged, 1);
+  assert.equal(stock.missing, 1);
+  assert.equal(stock.inTransit, 4);
+  assert.equal(stock.totalUsable, 13);
 });
 
 test('a bed is never shared by overlapping stays', () => {
