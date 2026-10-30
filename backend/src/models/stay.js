@@ -7,21 +7,21 @@ const roomSchema = new Schema({
   roomId: { type: String, required: true, unique: true },
   block: String,
   floor: Number,
-  pool: { type: String, enum: ['boys', 'girls', 'all_gender'] },
+  gender: { type: String, enum: ['boys', 'girls', 'all_gender'] },
   capacity: Number,
-  accessible: { type: String, enum: ['yes', 'no', 'unknown'] },
+  accessibility: { type: String, enum: ['yes', 'no', 'unknown'] },
   status: { type: String, enum: ['available', 'closed', 'cleaning'], default: 'available' },
   closures: [closureSchema],
 });
 
 const propertySchema = new Schema({
   propertyId: { type: String, required: true, unique: true },
-  name: String,
+  propertyName: String,
   beds: Number,
   costPerBedPerNight: Number,
   distanceKm: Number,
-  transport: String,
-  accessible: { type: String, enum: ['yes', 'no', 'unknown'], default: 'unknown' },
+  transportAvailability: String,
+  accessibility: { type: String, enum: ['yes', 'no', 'unknown'], default: 'unknown' },
   status: { type: String, enum: ['available', 'closed'], default: 'available' },
   closures: [closureSchema],
 });
