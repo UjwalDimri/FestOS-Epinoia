@@ -40,6 +40,17 @@ const constraintSettingSchema = new Schema({
 
 const counterSchema = new Schema({ _id: String, seq: Number });
 
+const participantImportSchema = new Schema({
+  batchId: { type: String, required: true, unique: true },
+  status: { type: String, enum: ['previewed', 'confirmed'], default: 'previewed', index: true },
+  mapping: Schema.Types.Mixed,
+  rows: [Schema.Types.Mixed],
+  summary: Schema.Types.Mixed,
+  createdBy: String,
+  confirmedBy: String,
+  confirmedAt: Date,
+}, { timestamps: true });
+
 const auditLogSchema = new Schema({
   seq: { type: Number, unique: true },
   at: { type: Date, default: Date.now },
@@ -92,6 +103,7 @@ export const DuplicateCandidate = model('DuplicateCandidate', duplicateCandidate
 export const Assumption = model('Assumption', assumptionSchema);
 export const ConstraintSetting = model('ConstraintSetting', constraintSettingSchema);
 export const Counter = model('Counter', counterSchema);
+export const ParticipantImportBatch = model('ParticipantImportBatch', participantImportSchema);
 export const AuditLog = model('AuditLog', auditLogSchema);
 export const Alert = model('Alert', alertSchema);
 export const Disruption = model('Disruption', disruptionSchema);

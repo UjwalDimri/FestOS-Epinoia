@@ -3,7 +3,10 @@ const { Schema, model } = mongoose;
 
 const participantSchema = new Schema({
   participantId: { type: String, required: true, unique: true },
+  firstName: { type: String, trim: true },
+  lastName: { type: String, trim: true },
   name: String,
+  email: { type: String, trim: true, lowercase: true, index: true },
   contingentId: { type: String, index: true },
   college: String,
   personType: { type: String, enum: ['participant', 'escort', 'leader'], default: 'participant' },
@@ -15,6 +18,13 @@ const participantSchema = new Schema({
   age: Number,
   isMinor: Boolean,
   contact: { type: String, select: false },
+  recordStatus: { type: String, enum: ['unverified', 'verified', 'needs_review', 'conflicting'], default: 'unverified', index: true },
+  source: { type: String, enum: ['manual', 'csv_import', 'external'], default: 'manual' },
+  sourceRowId: String,
+  internalNotes: { type: String, select: false },
+  arrivalMode: { type: String, enum: ['train', 'bus', 'flight', 'private_vehicle', 'other', 'unknown'], default: 'unknown' },
+  arrivalLocation: String,
+  departureLocation: String,
   accessibilityNeeds: { status: { type: String, enum: ['declared', 'declared_none', 'not_declared'] }, needs: [String] },
   dietaryNeeds: { status: { type: String, enum: ['declared', 'declared_none', 'unknown'] }, needs: [String] },
   arrivalDateTime: Date,
@@ -27,10 +37,23 @@ const participantSchema = new Schema({
   active: { type: Boolean, default: true },
   attrs: { type: Schema.Types.Mixed, default: {} },
 }, { timestamps: true });
+participantSchema.index({ contingentId: 1, active: 1, participantId: 1 });
+participantSchema.index({ name: 1, college: 1 });
+participantSchema.index({ arrivalDateTime: 1, departureDateTime: 1 });
 
 const contingentSchema = new Schema({
   contingentId: { type: String, required: true, unique: true },
   college: String,
+  collegeCode: { type: String, trim: true, uppercase: true },
+  collegeCity: String,
+  collegeState: String,
+  collegeContactPerson: String,
+  contactEmail: { type: String, trim: true, lowercase: true },
+  contactPhone: String,
+  status: { type: String, enum: ['expected', 'confirmed', 'arrived', 'partially_arrived', 'departed', 'cancelled'], default: 'expected', index: true },
+  arrivalDateTime: Date,
+  departureDateTime: Date,
+  internalNotes: { type: String, select: false },
   leader: String,
   leaderParticipantId: { type: String, default: null },
   escort: String,
@@ -39,6 +62,7 @@ const contingentSchema = new Schema({
   preferencesRaw: String,
   preferences: [String],
 }, { timestamps: true });
+contingentSchema.index({ collegeCode: 1 }, { unique: true, partialFilterExpression: { collegeCode: { $type: 'string' } } });
 
 const staffSchema = new Schema({
   memberId: { type: String, required: true, unique: true },

@@ -59,7 +59,7 @@ export const DISRUPTION_COMMITTERS = {
 };
 
 // Participant fields visible per role. Anything not listed is removed before the response leaves the server.
-const BASE = ['participantId', 'name', 'contingentId', 'college', 'personType', 'isLeader', 'checkInStatus', 'active'];
+const BASE = ['participantId', 'firstName', 'lastName', 'name', 'contingentId', 'college', 'personType', 'isLeader', 'checkInStatus', 'active', 'recordStatus'];
 export const PARTICIPANT_FIELDS = {
   festival_director: [...BASE, 'gender', 'housingCategory', 'age', 'isMinor', 'contactMasked', 'accessibilityNeeds',
     'dietaryNeeds', 'arrivalDateTime', 'departureDateTime', 'accommodationRequested', 'tshirtSize', 'issues', 'quarantined', 'mergedInto'],
