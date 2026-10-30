@@ -76,7 +76,7 @@ export function generateSchedule({ events, venues, participants, registrations, 
     // Heat assignment lever: group people by arrival so each heat is mostly on site at the same time.
     const ids = [...new Set(regsByEvent.get(ev.eventId) || [])]
       .filter((id) => byId.has(id))
-      .sort((a, b) => new Date(byId.get(a).arrival) - new Date(byId.get(b).arrival) || a.localeCompare(b));
+      .sort((a, b) => new Date(byId.get(a).arrivalDateTime) - new Date(byId.get(b).arrivalDateTime) || a.localeCompare(b));
     const heats = Math.max(minHeats, Math.ceil(ids.length / maxHeat));
     const heatSize = Math.ceil(ids.length / heats);
     const reqs = ev.venueRequirements || [];
@@ -110,7 +110,7 @@ export function generateSchedule({ events, venues, participants, registrations, 
           for (const pid of members) {
             const p = byId.get(pid);
             if (!p) continue;
-            if (!(p.arrival && new Date(p.arrival).getTime() + ready * 60000 <= start.getTime()) || new Date(p.departure) <= addMinutes(start, dur)) notPresent++;
+            if (!(p.arrivalDateTime && new Date(p.arrivalDateTime).getTime() + ready * 60000 <= start.getTime()) || new Date(p.departureDateTime) <= addMinutes(start, dur)) notPresent++;
             for (const iv of busy.get(pid) || []) {
               if (overlaps(start, addMinutes(start, dur), iv.start, iv.end)) clash++;
               else if (iv.venue !== v.venueId && overlaps(addMinutes(start, -travel), addMinutes(start, dur + travel), iv.start, iv.end)) travelClash++;

@@ -32,7 +32,7 @@ export const PERMISSIONS = {
   festival_director: ['*'],
   hospitality: [...READ_ALL, 'participants:write', 'participants:reveal', 'accommodation:write',
     'override:medium', 'exports:read', 'disruptions:commit'],
-  registration_desk: [...READ_ALL, 'participants:write', 'participants:reveal', 'dataquality:write',
+  registration_desk: [...READ_ALL, 'participants:write', 'participants:reveal', 'contingents:write', 'dataquality:write',
     'override:medium', 'disruptions:commit'],
   events_team: [...READ_ALL, 'schedule:write', 'override:medium', 'exports:read', 'disruptions:commit'],
   logistics_head: [...READ_ALL, 'inventory:write', 'override:medium', 'exports:read', 'disruptions:commit'],
@@ -61,22 +61,22 @@ export const DISRUPTION_COMMITTERS = {
 // Participant fields visible per role. Anything not listed is removed before the response leaves the server.
 const BASE = ['participantId', 'name', 'contingentId', 'college', 'personType', 'isLeader', 'checkInStatus', 'active'];
 export const PARTICIPANT_FIELDS = {
-  festival_director: [...BASE, 'genderAsGiven', 'housingCategory', 'age', 'isMinor', 'contactMasked', 'accessibility',
-    'dietary', 'arrival', 'departure', 'accommodationRequested', 'tshirtSize', 'issues', 'quarantined', 'mergedInto'],
-  hospitality: [...BASE, 'genderAsGiven', 'housingCategory', 'age', 'isMinor', 'contactMasked', 'accessibility',
-    'arrival', 'departure', 'accommodationRequested', 'issues', 'quarantined'],
-  registration_desk: [...BASE, 'housingCategory', 'isMinor', 'contactMasked', 'arrival', 'departure',
+  festival_director: [...BASE, 'gender', 'housingCategory', 'age', 'isMinor', 'contactMasked', 'accessibilityNeeds',
+    'dietaryNeeds', 'arrivalDateTime', 'departureDateTime', 'accommodationRequested', 'tshirtSize', 'issues', 'quarantined', 'mergedInto'],
+  hospitality: [...BASE, 'gender', 'housingCategory', 'age', 'isMinor', 'contactMasked', 'accessibilityNeeds',
+    'arrivalDateTime', 'departureDateTime', 'accommodationRequested', 'issues', 'quarantined'],
+  registration_desk: [...BASE, 'housingCategory', 'isMinor', 'contactMasked', 'arrivalDateTime', 'departureDateTime',
     'accommodationRequested', 'issues', 'quarantined', 'mergedInto'],
-  events_team: [...BASE, 'arrival', 'departure'],
+  events_team: [...BASE, 'arrivalDateTime', 'departureDateTime'],
   logistics_head: [...BASE],
   merchandise_desk: [...BASE, 'tshirtSize'],
-  food_coordinator: [...BASE, 'dietary', 'arrival', 'departure'],
+  food_coordinator: [...BASE, 'dietaryNeeds', 'arrivalDateTime', 'departureDateTime'],
   volunteer: ['participantId', 'name', 'contingentId', 'checkInStatus'],
 };
 
 // Sensitive fields that can be revealed with a logged reason, and who may reveal them.
 export const REVEALABLE = {
   contact: ['festival_director', 'registration_desk', 'hospitality'],
-  accessibility: ['festival_director', 'hospitality'],
-  dietary: ['festival_director', 'food_coordinator'],
+  accessibilityNeeds: ['festival_director', 'hospitality'],
+  dietaryNeeds: ['festival_director', 'food_coordinator'],
 };

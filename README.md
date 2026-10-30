@@ -68,7 +68,8 @@ Password for every account: **FestOS@2026** (set `SEED_PASSWORD` in `.env` to ch
 ## API overview (all under /api, Bearer token)
 
 - `POST /auth/login` · `GET /me` · `GET /dashboard` · `GET /alerts` · `POST /alerts/:key/ack`
-- `GET /participants` (masked) · `GET /participants/:id` · `POST /participants/:id/reveal` · `POST /participants/:id/housing`
+- `GET /participants` (masked, `page`, `limit`, `q`, `contingent`, `housing`, `flag` filters) · `GET /participants/:id` · `POST /participants` · `POST /participants/:id/reveal` · `POST /participants/:id/housing`
+- `GET /contingents` (paged, optional `q` search) · `GET /contingents/:id` (paged, role-masked members and declared-strength delta) · `POST /contingents`
 - `GET /data/issues` · `GET /data/headcount` · `GET /data/duplicates` · `POST /data/duplicates/:id/dismiss` · `POST /data/issues/:id/resolve`
 - `POST /plans/accommodation` · `POST /plans/schedule` · `POST /plans/:planId/activate` · `GET /accommodation/compare` · `GET /accommodation/active` · `GET /accommodation/unplaced` · `GET /rooms`
 - `GET /schedule/active`
@@ -79,6 +80,14 @@ Password for every account: **FestOS@2026** (set `SEED_PASSWORD` in `.env` to ch
 - `GET /constraints` · `GET /assumptions` · `PUT /assumptions/:key`
 - `GET /audit` · `GET /audit/verify`
 - `GET /export/accommodation.csv` · `GET /export/schedule.csv` · `GET /export/inventory.csv`
+
+### Team 1 data contracts
+
+- Participant fields follow the Team 1 sheet: `participantId` (ID), `name`, `college`, `contingentId`, `gender`, `age`, `contact`, `accessibilityNeeds`, `dietaryNeeds`, `arrivalDateTime`, `departureDateTime`, `accommodationRequested`, and `tshirtSize`. Declared/none/unknown states remain attached to the accessibility and dietary needs so blank data is not treated as a declaration. Duplicate candidates stay reviewable instead of being silently merged.
+- Contingents use `college`, `contingentId` (contingent number), `leader`, `escort`, `strengthDeclared`, and `preferences`. Use `POST /participants` with `participantId`, `name`, and an existing `contingentId`; use `POST /contingents` to create a contingent. Participant responses remain role-masked.
+- Accommodation uses `Room` fields `roomId`, `block`, `floor`, `gender`, `capacity`, `accessibility`, and `status`, plus `ExternalProperty` fields `propertyId`, `propertyName`, `beds`, `costPerBedPerNight`, `distanceKm`, and `transportAvailability`. `Plan` stores a run and `Allocation` stores each person's proposed or committed stay. Start with `POST /plans/accommodation`; inspect with `GET /accommodation/compare`, `GET /accommodation/active`, `GET /accommodation/unplaced`, and `GET /rooms`.
+- Write operations use the existing JSON resource responses and error shape (`{ "error": "...", "details": ... }`), and are recorded in the audit log. Participant creation requires participant-write permission; contingent creation is limited to the registration desk and Festival Director.
+- On startup, the backend renames the previous participant, contingent, room, and external-property paths in place so existing MongoDB records keep their data under the Team 1 field names.
 
 ## Live-test runbook
 
