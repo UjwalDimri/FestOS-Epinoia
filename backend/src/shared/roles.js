@@ -55,7 +55,7 @@ export const DISRUPTION_COMMITTERS = {
   venue_change: ['events_team'],
   vendor_shutdown: ['food_coordinator'],
   duplicate_merch_claim: ['merchandise_desk'],
-  constraint_replan: ['hospitality', 'events_team'],
+  constraint_change: ['hospitality', 'events_team'],
 };
 
 // Participant fields visible per role. Anything not listed is removed before the response leaves the server.

@@ -9,6 +9,8 @@ import { parseIST, fmtIST, overlaps, addMinutes } from '../utils/time.js';
 import { badRequest, notFound } from '../utils/errors.js';
 import { DISRUPTION_COMMITTERS } from '../shared/roles.js';
 import { templateExplanation } from './explain.js';
+import { arrivalAfterDelay, assertDisruptionTransactionsSupported, validateDisruptionParams } from './disruptionValidation.js';
+import { supportsTransactions } from '../config/db.js';
 
 const money = (n) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 
@@ -79,7 +81,7 @@ async function previewLateContingent(state, p) {
   if (!newArrival) throw badRequest('newArrival must be "YYYY-MM-DD HH:mm" IST');
   const members = state.people.filter((x) => x.contingentId === cid && x.personType === 'participant' && !x.quarantined);
   if (!members.length) throw notFound(`No participants in ${cid}`);
-  const shift = (x) => ({ ...x, arrival: new Date(Math.max(newArrival.getTime(), new Date(x.arrival).getTime())) });
+  const shift = (x) => ({ ...x, arrival: arrivalAfterDelay(x.arrival, newArrival) });
   const moved = members.map(shift);
   const movedIds = new Set(moved.map((m) => m.participantId));
   const { plan, allocs } = await currentAccommodation();
@@ -103,15 +105,17 @@ async function previewLateContingent(state, p) {
       slotsAffectedSample: lateSlots.slice(0, 6).map((s) => ({ slotId: s.slotId, start: fmtIST(s.start) })),
       scheduleAfter: sched.summary,
     },
-    changes: { type: 'late_contingent', contingentId: cid, newArrival, memberIds: [...movedIds], releasedAllocIds: affectedAllocs.map((a) => a._id), newAllocations: run.allocations, planId: plan.planId },
+    changes: { type: 'late_contingent', contingentId: cid, newArrival, memberArrivals: moved.map(({ participantId, arrival }) => ({ participantId, arrival })), releasedAllocIds: affectedAllocs.map((a) => a._id), newAllocations: run.allocations, planId: plan.planId },
   };
 }
 
 async function applyLateContingent(session, c) {
-  await M.Participant.updateMany({ participantId: { $in: c.memberIds } }, { arrival: c.newArrival }, { session });
+  for (const member of c.memberArrivals) {
+    await M.Participant.updateOne({ participantId: member.participantId }, { arrival: member.arrival }, { session });
+  }
   await M.Allocation.updateMany({ _id: { $in: c.releasedAllocIds } }, { status: 'released', overrideReason: 'Released: arrival changed' }, { session });
   await M.Allocation.insertMany(c.newAllocations.map((a) => ({ ...a, planId: c.planId, overrideReason: null })), { session });
-  return { summary: { contingentId: c.contingentId, members: c.memberIds.length } };
+  return { summary: { contingentId: c.contingentId, members: c.memberArrivals.length } };
 }
 
 // ---------- 3. Duplicate record (merge, keep audit)
@@ -278,6 +282,7 @@ export const DISRUPTION_TYPES = Object.keys(TYPES);
 export async function previewDisruption(type, params, user) {
   const t = TYPES[type];
   if (!t) throw badRequest(`Unknown disruption "${type}"`, { allowed: DISRUPTION_TYPES });
+  validateDisruptionParams(type, params || {});
   const state = await loadState();
   const out = await t.preview(state, params || {}, user);
   const disruptionId = `D-${Date.now().toString(36).toUpperCase()}`;
@@ -289,10 +294,12 @@ export async function previewDisruption(type, params, user) {
 }
 
 export async function commitDisruption(disruptionId, user, reason) {
+  assertDisruptionTransactionsSupported(supportsTransactions());
   const d = await M.Disruption.findOne({ disruptionId });
   if (!d) throw notFound('No such disruption');
   if (d.status !== 'previewed') throw badRequest(`Disruption is already ${d.status}`);
   const t = TYPES[d.type];
+  validateDisruptionParams(d.type, d.params || {});
   const allowedRoles = DISRUPTION_COMMITTERS[d.type] || [];
   if (user.role !== 'festival_director' && !allowedRoles.includes(user.role)) {
     const { forbidden } = await import('../utils/errors.js');
