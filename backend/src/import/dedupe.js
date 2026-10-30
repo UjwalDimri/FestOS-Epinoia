@@ -1,15 +1,15 @@
 // Duplicate-looking records: names repeat across real people (191 names for 2,836 rows) and phones are all unique,
 // so a name match alone means nothing. Score pairs on several fields and send them to human review.
-const WEIGHTS = { base: 40, age: 15, genderAsGiven: 10, tshirtSize: 10, diet: 10, access: 5, arrival: 5, departure: 5 };
+const WEIGHTS = { base: 40, age: 15, gender: 10, tshirtSize: 10, diet: 10, access: 5, arrival: 5, departure: 5 };
 
 const val = {
   age: (p) => p.age,
-  genderAsGiven: (p) => p.genderAsGiven,
+  gender: (p) => p.gender,
   tshirtSize: (p) => p.tshirtSize,
-  diet: (p) => (p.dietary?.needs || []).join('|') || null,
-  access: (p) => (p.accessibility?.needs || []).join('|') || null,
-  arrival: (p) => p.arrival?.getTime?.() ?? p.arrival,
-  departure: (p) => p.departure?.getTime?.() ?? p.departure,
+  diet: (p) => (p.dietaryNeeds?.needs || []).join('|') || null,
+  access: (p) => (p.accessibilityNeeds?.needs || []).join('|') || null,
+  arrival: (p) => p.arrivalDateTime?.getTime?.() ?? p.arrivalDateTime,
+  departure: (p) => p.departureDateTime?.getTime?.() ?? p.departureDateTime,
 };
 
 export function scorePair(a, b) {

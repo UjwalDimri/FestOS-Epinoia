@@ -66,8 +66,9 @@ export function normalizeParticipant(row, festEnd) {
   return {
     doc: {
       participantId: id, name: row.name, contingentId: row.contingent_id, college: row.college, personType: 'participant',
-      raw: row, genderAsGiven: genderRaw, housingCategory, age: Number.isFinite(age) ? age : null, isMinor,
-      contact, accessibility, dietary, arrival, departure, accommodationRequested,
+      raw: row, gender: genderRaw, housingCategory, age: Number.isFinite(age) ? age : null, isMinor,
+      contact, accessibilityNeeds: accessibility, dietaryNeeds: dietary,
+      arrivalDateTime: arrival, departureDateTime: departure, accommodationRequested,
       tshirtSize: blank(row.tshirt_size) ? null : row.tshirt_size.trim().toUpperCase(),
       quarantined, active: !quarantined,
     },
