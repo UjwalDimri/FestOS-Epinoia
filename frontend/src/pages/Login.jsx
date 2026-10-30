@@ -30,23 +30,20 @@ export default function Login({ onLogin, sessionError }) {
   }
 
   return (
-    <><DemoBanner/><main>
-      <h2>Sign in to FestOS</h2>
-      {sessionError && <p className="err" role="alert">{sessionError}</p>}
-      <form className="card" onSubmit={submit} style={{ maxWidth: 420 }}>
-        <div className="row" style={{ flexDirection: 'column' }}>
-          <label>Email<input autoComplete="username" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" /></label>
-          <label>Password<input autoComplete="current-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" /></label>
-          <button className="primary" type="submit">Sign in</button>
+    <><DemoBanner/><main className="login-screen">
+      <div className="login-brand"><span className="brand-mark" aria-hidden="true">F</span><span><b>FestOS</b><small>FESTIVAL OPERATIONS</small></span></div>
+      <section className="login-content">
+        <div className="login-intro"><span className="context-label">AAROHAN 2026 · OPERATIONS PORTAL</span><h1>Sign in to FestOS</h1><p>Access the festival workspace with your assigned team account.</p></div>
+        {sessionError && <p className="err" role="alert">{sessionError}</p>}
+        <form className="card login-card" onSubmit={submit}>
+          <label className="form-field">Email<input autoComplete="username" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@festos.test" /></label>
+          <label className="form-field">Password<input autoComplete="current-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" /></label>
           {err && <span className="err" role="alert">{err}</span>}
-        </div>
-      </form>
-      {DEMO_MODE && <div className="card" style={{ maxWidth: 420 }}>
-        <div className="muted" style={{ marginBottom: 6 }}>Test accounts (password FestOS@2026)</div>
-        {DEMO.map(([k, label]) => (
-          <button key={k} className="ghost" style={{ margin: 3 }} onClick={() => { setEmail(`${k}@festos.test`); setPassword('FestOS@2026'); }}>{label}</button>
-        ))}
-      </div>}
+          <button className="primary" type="submit">Sign in</button>
+        </form>
+        {DEMO_MODE && <div className="login-demo"><div><strong>Demo access</strong><span className="muted">Choose a role to fill the demo sign-in.</span></div><div className="demo-roles">{DEMO.map(([k, label]) => <button key={k} className="ghost" onClick={() => { setEmail(`${k}@festos.test`); setPassword('FestOS@2026'); }}>{label}</button>)}</div></div>}
+      </section>
+      <footer className="login-footer">Festival operations workspace <span>·</span> Role-based access</footer>
     </main></>
   );
 }
