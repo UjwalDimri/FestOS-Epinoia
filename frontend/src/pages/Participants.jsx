@@ -1,98 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { participantsService } from '../services/index.js';
+import { AccessibleDialog, EmptyState, ErrorState, LoadingState, Pagination, Toast } from '../components/Shared.jsx';
 
-export default function Participants() {
-  const [q, setQ] = useState('');
-  const [flag, setFlag] = useState('');
-  const [data, setData] = useState({ rows: [], total: 0 });
-  const [page, setPage] = useState(1);
-  const [open, setOpen] = useState(null);
-  const [err, setErr] = useState('');
+const LIMIT=25;
+const MASKING={festival_director:'Sensitive fields are masked until you reveal them with a logged reason.',hospitality:'Contacts, dietary data and selected identity fields are masked unless your role can reveal them.',registration_desk:'Contacts and selected fields are masked unless revealed with a logged reason.',events_team:'Only event scheduling fields are shown for this role.',logistics_head:'Only operational identity fields are shown for this role.',merchandise_desk:'Only merchandise-relevant participant fields are shown for this role.',food_coordinator:'Dietary data is limited to your role; other sensitive fields remain masked.',volunteer:'Only participant names, IDs and contingents are shown to volunteers.'};
+const REVEALS={contact:['festival_director','registration_desk','hospitality'],accessibility:['festival_director','hospitality'],dietary:['festival_director','food_coordinator']};
+const ist=(v)=>v?new Date(new Date(v).getTime()+19800000).toISOString().slice(0,16).replace('T',' '):'—';
 
-  useEffect(() => {
-    const qs = new URLSearchParams({ page, limit: 25 });
-    if (q) qs.set('q', q);
-    if (flag) qs.set('flag', flag);
-    api(`/participants?${qs}`).then(setData).catch((e) => setErr(e.message));
-  }, [q, flag, page]);
-
-  async function show(id) {
-    try { setOpen(await api(`/participants/${id}`)); } catch (e) { setErr(e.message); }
-  }
-
-  return (
-    <>
-      <div className="card row">
-        <input placeholder="Search name" value={q} onChange={(e) => { setPage(1); setQ(e.target.value); }} />
-        <select value={flag} onChange={(e) => { setPage(1); setFlag(e.target.value); }}>
-          <option value="">All</option>
-          <option value="minor">Minors</option>
-          <option value="quarantined">Quarantined</option>
-        </select>
-        <span className="muted">{data.total} people · contact details are masked for your role</span>
-      </div>
-      {err && <p className="err">{err}</p>}
-      <div className="card">
-        <table>
-          <thead><tr><th>ID</th><th>Name</th><th>Contingent</th><th>Housing</th><th>Arrives (IST)</th><th>Status</th></tr></thead>
-          <tbody>
-            {data.rows.map((p) => (
-              <tr key={p.participantId} className="clickable" onClick={() => show(p.participantId)}>
-                <td>{p.participantId}</td><td>{p.name}</td><td>{p.contingentId}</td><td>{p.housingCategory || '—'}</td>
-                <td>{p.arrivalDateTime ? new Date(new Date(p.arrivalDateTime).getTime() + 19800000).toISOString().slice(0, 16).replace('T', ' ') : '—'}</td>
-                <td className={p.quarantined ? 'err' : ''}>{p.quarantined ? 'quarantined' : p.personType}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="row" style={{ marginTop: 8 }}>
-          <button className="ghost" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button>
-          <span className="muted">Page {page}</span>
-          <button className="ghost" disabled={page * 25 >= data.total} onClick={() => setPage(page + 1)}>Next</button>
-        </div>
-      </div>
-      {open && <Detail d={open} onClose={() => setOpen(null)} />}
-    </>
-  );
+export default function Participants({user}){
+ const [query,setQuery]=useState(''),[debounced,setDebounced]=useState(''),[flag,setFlag]=useState(''),[page,setPage]=useState(1),[data,setData]=useState(null),[loading,setLoading]=useState(false),[err,setErr]=useState(''),[detail,setDetail]=useState(null),[detailBusy,setDetailBusy]=useState(false),[toast,setToast]=useState('');
+ const controller=useRef(null),detailController=useRef(null);
+ useEffect(()=>{controller.current?.abort();setLoading(true);setData(null);setErr('');const timer=setTimeout(()=>setDebounced(query),300);return()=>clearTimeout(timer);},[query]);
+ useEffect(()=>{const current=new AbortController();controller.current?.abort();controller.current=current;setLoading(true);setData(null);setErr('');const qs=new URLSearchParams({page:String(page),limit:String(LIMIT)});if(debounced)qs.set('q',debounced);if(flag)qs.set('flag',flag);participantsService.list(`?${qs}`,current.signal).then(d=>{setData(d);setErr('');}).catch(e=>{if(e.kind!=='aborted')setErr(e.message);}).finally(()=>{if(!current.signal.aborted)setLoading(false);});return()=>current.abort();},[debounced,flag,page]);
+ async function show(id){detailController.current?.abort();const ctrl=new AbortController();detailController.current=ctrl;setDetailBusy(true);setErr('');try{setDetail(await participantsService.detail(id,ctrl.signal));}catch(e){if(e.kind!=='aborted')setErr(e.message);}finally{if(!ctrl.signal.aborted)setDetailBusy(false);}}
+ const total=data?.total;const pages=Math.max(1,Math.ceil((total||0)/LIMIT));
+ return <><p className="muted">{MASKING[user.role]||'Participant fields are masked according to your role.'}</p>{toast&&<Toast message={toast}/>}<section className="card"><div className="filters"><label>Name search<input value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Search name" /></label><label>Flag<select value={flag} onChange={e=>{setFlag(e.target.value);setPage(1);}}><option value="">All</option><option value="minor">Minors</option><option value="quarantined">Quarantined</option></select></label><span className="muted">{data?`${total} people`:loading?'Loading count…':'Count unavailable'}</span></div>{err&&<ErrorState error={err}/ >}{loading&&!data?<LoadingState/>:data?.rows?.length?<><div className="table-scroll"><table><thead><tr><th>ID</th><th>Name</th><th>Contingent</th><th>Housing</th><th>Arrives (IST)</th><th>Status</th><th>Details</th></tr></thead><tbody>{data.rows.map(p=><tr key={p.participantId}><td>{p.participantId}</td><td>{p.name}</td><td>{p.contingentId}</td><td>{p.housingCategory??'Unavailable'}</td><td>{ist(p.arrivalDateTime||p.arrival)}</td><td>{p.quarantined?'Quarantined':p.personType||'Unavailable'}</td><td><button className="ghost" onClick={()=>show(p.participantId)}>Open</button></td></tr>)}</tbody></table></div><Pagination page={page} total={total} limit={LIMIT} onChange={setPage}/></>:data?<EmptyState>No participants match these filters.</EmptyState>:!loading&&!err?<ErrorState error="Participant list is unavailable."/>:null}</section>{detailBusy&&!detail&&<LoadingState/>}{detail&&<Detail d={detail} user={user} onClose={()=>{detailController.current?.abort();setDetail(null);}} onToast={setToast}/> }</>;
 }
 
-function Detail({ d, onClose }) {
-  const p = d.person;
-  const a = d.allocation;
-  return (
-    <div className="card">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h3 style={{ margin: 0 }}>{p.participantId} · {p.name}</h3>
-        <button className="ghost" onClick={onClose}>Close</button>
-      </div>
-      <p className="muted">Contingent {p.contingentId} · {p.college} · {p.personType}{p.isLeader ? ' · leader' : ''}</p>
-      <div className="row">
-        <div><b>Housing</b><div>{p.housingCategory || '—'} {p.gender ? `(gender: ${p.gender})` : '(blank)'}</div></div>
-        <div><b>Accessibility</b><div>{p.accessibilityNeeds?.status}{p.accessibilityNeeds?.needs?.length ? `: ${p.accessibilityNeeds.needs.join(', ')}` : ''}</div></div>
-        <div><b>Dietary</b><div>{p.dietaryNeeds?.status}{p.dietaryNeeds?.needs?.length ? `: ${p.dietaryNeeds.needs.join(', ')}` : ''}</div></div>
-        <div><b>Contact</b><div>{p.contactMasked || 'hidden for your role'}</div></div>
-        <div><b>T-shirt</b><div>{p.tshirtSize || '—'}</div></div>
-      </div>
-      <h4>Bed</h4>
-      {a ? (
-        <div>
-          <div>{a.bed?.kind ? `${a.bed.roomId || a.bed.propertyId} · bed ${a.bed.bedNo} · ${a.nights} nights · ₹${(a.cost || 0).toLocaleString('en-IN')}` : 'Unplaced'}</div>
-          <div className="muted">{a.explanation}</div>
-          <div className="muted">Reason codes: {(a.reasonCodes || []).join(', ')}</div>
-        </div>
-      ) : <div className="muted">No active allocation.</div>}
-      <h4>Events</h4>
-      <div>{d.registrations.join(', ') || 'none'}</div>
-      <h4>Merch</h4>
-      <div>{d.merch.length ? d.merch.map((m) => `${m.item} ${m.size} (${m.kind})`).join(' · ') : 'none issued'}</div>
-      {d.duplicateCandidates.length > 0 && <>
-        <h4>Possible duplicates</h4>
-        <div>{d.duplicateCandidates.map((c) => `${c.other} (score ${c.score}, ${c.status})`).join(' · ')}</div>
-      </>}
-      {p.issues?.length > 0 && <>
-        <h4>Open data issues</h4>
-        <ul>{p.issues.map((i) => <li key={i.code} className={`sev-${i.severity}`}>{i.message}</li>)}</ul>
-      </>}
-    </div>
-  );
+function Detail({d,user,onClose,onToast}){
+ const p=d.person||{},[field,setField]=useState('contact'),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[revealed,setRevealed]=useState({});
+ const allowed=useMemo(()=>Object.entries(REVEALS).filter(([,roles])=>roles.includes(user.role)).map(([name])=>name),[user.role]);
+ async function reveal(){if(reason.trim().length<5){setError('A reason of at least 5 characters is required.');return;}setBusy(true);setError('');try{const result=await participantsService.reveal(p.participantId,field,reason.trim());setRevealed(v=>({...v,[field]:result.value}));setReason('');onToast('Sensitive field revealed and logged.');}catch(e){setError(e.message);}finally{setBusy(false);}}
+ return <AccessibleDialog title={`${p.participantId} · ${p.name}`} labelledBy="participant-title" onClose={onClose}><div className="row between"><p className="muted">Contingent {p.contingentId} · {p.college||'College unavailable'} · {p.personType||'Type unavailable'}</p><button className="ghost" onClick={onClose}>Close</button></div><div className="detail-grid"><div><b>Housing</b><p>{p.housingCategory||'Unavailable'} · {p.gender||p.genderAsGiven||'Gender not provided'}</p></div><div><b>Accessibility</b><p>{revealed.accessibility?JSON.stringify(revealed.accessibility):p.accessibilityNeeds||p.accessibility?JSON.stringify(p.accessibilityNeeds||p.accessibility):'Masked or unavailable'}</p></div><div><b>Dietary</b><p>{revealed.dietary?JSON.stringify(revealed.dietary):p.dietaryNeeds||p.dietary?JSON.stringify(p.dietaryNeeds||p.dietary):'Masked or unavailable'}</p></div><div><b>Contact</b><p>{revealed.contact??p.contactMasked??'Masked or unavailable'}</p></div></div>{allowed.length>0&&<section className="card"><h3>Reveal sensitive field</h3><label className="form-field">Field<select value={field} onChange={e=>setField(e.target.value)}>{allowed.map(x=><option key={x}>{x}</option>)}</select></label><label className="form-field">Reason (required)<input value={reason} onChange={e=>setReason(e.target.value)} minLength={5}/></label><button className="primary" disabled={busy||reason.trim().length<5} onClick={reveal}>{busy?'Revealing…':'Reveal and log'}</button>{error&&<ErrorState error={error}/>}</section>}
+ <h3>Allocation</h3>{d.allocation?<><p>{d.allocation.bed?.roomId||d.allocation.bed?.propertyId||'Unplaced'} · {d.allocation.nights??'—'} nights · ₹{d.allocation.cost??'—'}</p><p>{d.allocation.explanation||'No explanation returned.'}</p><p>Reason codes: {(d.allocation.reasonCodes||[]).join(', ')||'None returned'}</p></>:<p>No active allocation.</p>}<h3>Registrations</h3><p>{d.registrations?.join(', ')||'None returned'}</p><h3>Merchandise</h3><p>{d.merch?.length?d.merch.map(m=>`${m.item} ${m.size} (${m.kind})`).join(' · '):'None returned'}</p>{d.duplicateCandidates?.length>0&&<><h3>Possible duplicates</h3><ul>{d.duplicateCandidates.map(x=><li key={x.other}>{x.other} · score {x.score} · {x.status}</li>)}</ul></>}{p.issues?.length>0&&<><h3>Open data issues</h3><ul>{p.issues.map((i,index)=><li key={`${i.code}-${index}`}>{i.severity} · {i.message}</li>)}</ul></>}</AccessibleDialog>;
 }
