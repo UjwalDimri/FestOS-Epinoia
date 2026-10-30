@@ -20,6 +20,8 @@ import { toCsv } from '../utils/csv.js';
 import { findDuplicateCandidates } from '../import/dedupe.js';
 import { env } from '../config/env.js';
 import { participantContingent } from '../modules/participants/participantContingent.routes.js';
+import { accommodationApi } from '../modules/accommodation/accommodation.routes.js';
+import { logisticsApi } from '../modules/logistics/logistics.routes.js';
 
 export const api = express.Router();
 
@@ -42,6 +44,8 @@ api.post('/auth/login', ah(async (req, res) => {
 }));
 
 api.use(authenticate);
+api.use(accommodationApi);
+api.use(logisticsApi);
 api.use(participantContingent);
 
 api.get('/me', ah(async (req, res) => {
@@ -329,7 +333,7 @@ api.post('/plans/:planId/activate', requirePerm('accommodation:write'), ah(async
   const plan = await M.Plan.findOne({ planId: req.params.planId }).lean();
   if (!plan) throw notFound('No such plan');
   const fn = plan.type === 'accommodation' ? activateAccommodationPlan : activateSchedulePlan;
-  res.json(await fn({ user: req.user, planId: plan.planId, reason: req.body?.reason || 'Activated' }));
+  res.json(await fn({ user: req.user, planId: plan.planId, reason: req.body?.reason || '' }));
 }));
 
 api.get('/accommodation/compare', requirePerm('accommodation:read'), ah(async (req, res) => {
