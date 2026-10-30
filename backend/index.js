@@ -5,10 +5,12 @@ import { connectDb } from './src/config/db.js';
 import { createApp } from './src/appFactory.js';
 import { ensureAssumptions } from './src/services/assumptions.js';
 import { migrateTeam1SchemaFields } from './src/services/schemaMigrations.js';
+import { migrateLegacyStockLocations } from './src/services/logisticsMigrations.js';
 import * as M from './src/models/index.js';
 
 await connectDb(env.mongoUri);
 await migrateTeam1SchemaFields();
+await migrateLegacyStockLocations();
 await ensureAssumptions();
 
 if (!(await M.User.countDocuments({}))) {

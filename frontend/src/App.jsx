@@ -30,10 +30,10 @@ export default function App() {
   ['Overview',[['dashboard','Control tower']]],
   ['People',[['participants','People']]],
   ['Operations',[['plans','Accommodation & schedule'],['disruptions','Disruptions']]],
-  ['Resources',[['logistics','Logistics']]],
+  ['Resources',[['logistics','Logistics'],['merchandise','Merchandise']]],
   ['Administration',[['data','Data quality'],['audit','Audit']]],
  ];
- const descriptions={dashboard:'A live view of festival readiness, open alerts and operational pressure.',participants:'Search and review participant records with role-aware field visibility.',plans:'Review accommodation capacity and schedule plans returned by the operations engine.',disruptions:'Preview operational impact before an authorized change is committed.',data:'Review reported data issues and duplicate candidates.',audit:'Verify the audit chain and inspect recorded operational actions.',logistics:'Review current inventory, merchandise, vendor and food coverage reports.'};
+ const descriptions={dashboard:'A live view of festival readiness, open alerts and operational pressure.',participants:'Search and review participant records with role-aware field visibility.',plans:'Review accommodation capacity and schedule plans returned by the operations engine.',disruptions:'Preview operational impact before an authorized change is committed.',data:'Review reported data issues and duplicate candidates.',audit:'Verify the audit chain and inspect recorded operational actions.',logistics:'Review current inventory, merchandise, vendor and food coverage reports.',merchandise:'Manage merchandise stock, participant issues and returns.'};
  return <div className="app-shell">
   <aside className={`sidebar${menuOpen?' sidebar-open':''}`} aria-label="Application navigation">
    <div className="brand"><span className="brand-mark" aria-hidden="true">F</span><span><b>FestOS</b><small>FESTIVAL OPERATIONS</small></span></div>
