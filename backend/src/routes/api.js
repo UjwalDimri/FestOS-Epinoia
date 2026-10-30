@@ -19,6 +19,7 @@ import { parseIST, fmtIST, istDateKey, dateRangeKeys } from '../utils/time.js';
 import { toCsv } from '../utils/csv.js';
 import { findDuplicateCandidates } from '../import/dedupe.js';
 import { env } from '../config/env.js';
+import { participantContingent } from '../modules/participants/participantContingent.routes.js';
 
 export const api = express.Router();
 
@@ -41,6 +42,7 @@ api.post('/auth/login', ah(async (req, res) => {
 }));
 
 api.use(authenticate);
+api.use(participantContingent);
 
 api.get('/me', ah(async (req, res) => {
   res.json({ user: { ...req.user, roleLabel: ROLES[req.user.role] }, permissions: ['override:medium', 'participants:reveal'].filter((p) => can(req.user.role, p)) });
