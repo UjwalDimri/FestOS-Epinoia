@@ -1,7 +1,7 @@
 import { register } from './registry.js';
 import { overlaps } from '../utils/time.js';
 
-// subject = person demand { housingCategory, accessibility, isMinor, contingentId, checkIn, checkOut, personType }
+// subject = person demand { housingCategory, accessibilityNeeds, isMinor, contingentId, checkIn, checkOut, personType }
 // candidate = location { kind, pool, accessible, floor, site, group, costPerNight, distanceKm, transport, status, closures }
 
 register({

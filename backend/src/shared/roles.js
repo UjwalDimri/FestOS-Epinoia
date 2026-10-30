@@ -36,7 +36,7 @@ export const PERMISSIONS = {
     'override:medium', 'disruptions:commit'],
   events_team: [...READ_ALL, 'schedule:write', 'override:medium', 'exports:read', 'disruptions:commit'],
   logistics_head: [...READ_ALL, 'inventory:write', 'override:medium', 'exports:read', 'disruptions:commit'],
-  merchandise_desk: [...READ_ALL, 'merch:issue', 'merch:replace', 'override:medium', 'disruptions:commit'],
+  merchandise_desk: [...READ_ALL, 'merch:issue', 'merch:replace', 'merch:manage', 'merch:return', 'override:medium', 'disruptions:commit'],
   food_coordinator: [...READ_ALL, 'vendors:write', 'override:medium', 'disruptions:commit'],
   volunteer: ['participants:read', 'alerts:read', 'dashboard:read', 'participants:checkin'],
 };

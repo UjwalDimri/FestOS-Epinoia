@@ -8,7 +8,7 @@ import { can, ROLES, REVEALABLE } from '../shared/roles.js';
 import { loadState, accommodationRun, scheduleRun, foodRun, activePlan } from '../services/state.js';
 import { buildAccommodationPlan, buildSchedulePlan, activateAccommodationPlan, activateSchedulePlan } from '../services/plans.js';
 import { previewDisruption, commitDisruption, DISRUPTION_TYPES } from '../services/disruptions.js';
-import { issueMerch, replaceMerch, merchForecast } from '../services/merch.js';
+import { issueMerch, replaceMerch, returnMerch, merchForecast, merchIssues, merchandiseCatalogue, saveMerchandise } from '../services/merch.js';
 import { runCommand, verifyAuditChain, appendAudit } from '../services/command.js';
 import { computeAlerts } from '../services/alerts.js';
 import { explain } from '../services/explain.js';
@@ -115,8 +115,8 @@ api.post('/participants', requirePerm('participants:write'), ah(async (req, res)
   if (!['expected', 'checked_in', 'delayed', 'absent'].includes(checkInStatus)) throw badRequest('checkInStatus must be expected, checked_in, delayed or absent');
   if (body.isMinor != null && typeof body.isMinor !== 'boolean') throw badRequest('isMinor must be true or false');
   if (body.accommodationRequested != null && typeof body.accommodationRequested !== 'boolean') throw badRequest('accommodationRequested must be true or false');
-  const arrivalDateTime = body.arrivalDateTime || body.arrival ? new Date(body.arrivalDateTime || body.arrival) : undefined;
-  const departureDateTime = body.departureDateTime || body.departure ? new Date(body.departureDateTime || body.departure) : undefined;
+  const arrivalDateTime = body.arrivalDateTime ? new Date(body.arrivalDateTime) : undefined;
+  const departureDateTime = body.departureDateTime ? new Date(body.departureDateTime) : undefined;
   if ((arrivalDateTime && Number.isNaN(arrivalDateTime.getTime())) || (departureDateTime && Number.isNaN(departureDateTime.getTime()))) {
     throw badRequest('arrivalDateTime and departureDateTime must be valid dates');
   }
@@ -124,12 +124,12 @@ api.post('/participants', requirePerm('participants:write'), ah(async (req, res)
   const participant = {
     participantId, name, contingentId, college: body.college || contingent.college,
     personType, isLeader: body.isLeader === true || personType === 'leader',
-    gender: body.gender ?? body.genderAsGiven ?? null,
+    gender: body.gender ?? null,
     housingCategory,
     age, isMinor: body.isMinor == null ? (age != null && age < 18) : body.isMinor,
     contact: body.contact || '',
-    accessibilityNeeds: body.accessibilityNeeds || body.accessibility || { status: 'not_declared', needs: [] },
-    dietaryNeeds: body.dietaryNeeds || body.dietary || { status: 'unknown', needs: [] },
+    accessibilityNeeds: body.accessibilityNeeds || { status: 'not_declared', needs: [] },
+    dietaryNeeds: body.dietaryNeeds || { status: 'unknown', needs: [] },
     arrivalDateTime, departureDateTime,
     accommodationRequested: body.accommodationRequested ?? true,
     tshirtSize: body.tshirtSize || undefined,
@@ -205,9 +205,9 @@ api.post('/contingents', requirePerm('contingents:write'), ah(async (req, res) =
   if (!Number.isInteger(strengthDeclared) || strengthDeclared < 0) throw badRequest('strengthDeclared must be a non-negative integer');
   const contingent = {
     contingentId, college, strengthDeclared,
-    leader: body.leader || body.leaderName || body.contactPerson || '',
+    leader: body.leader || '',
     leaderParticipantId: body.leaderParticipantId || null,
-    escort: body.escort || body.escortName || '', escortPersonId: body.escortPersonId || null,
+    escort: body.escort || '', escortPersonId: body.escortPersonId || null,
     preferencesRaw: body.preferencesRaw || '',
     preferences: Array.isArray(body.preferences) ? body.preferences : [],
   };
@@ -238,7 +238,7 @@ api.get('/contingents/:id', requirePerm('contingents:read'), ah(async (req, res)
 
 api.post('/participants/:id/reveal', ah(async (req, res) => {
   const { field, reason } = req.body || {};
-  const canonicalField = ({ accessibility: 'accessibilityNeeds', dietary: 'dietaryNeeds' })[field] || field;
+  const canonicalField = field;
   if (!REVEALABLE[canonicalField]) throw badRequest(`Field "${field}" cannot be revealed`, { allowed: Object.keys(REVEALABLE) });
   if (!REVEALABLE[canonicalField].includes(req.user.role)) throw forbidden(`Your role cannot reveal ${canonicalField}`);
   if (!reason || reason.trim().length < 5) throw badRequest('Give a reason (at least 5 characters). Every reveal is logged.');
@@ -403,6 +403,29 @@ api.post('/inventory/move', requirePerm('inventory:write'), ah(async (req, res) 
 
 api.get('/merch', requirePerm('merch:read'), ah(async (req, res) => {
   res.json({ forecast: await merchForecast(), issuesToday: await M.MerchIssue.countDocuments({}) });
+}));
+
+api.get('/merchandise', requirePerm('merch:read'), ah(async (_req, res) => {
+  res.json({ catalogue: await merchandiseCatalogue(), eligibilityRules: { participants: 'Registered participants only', everyone: 'Any active participant, escort or contingent leader' } });
+}));
+
+api.post('/merchandise', requirePerm('merch:manage'), ah(async (req, res) => {
+  const item = await saveMerchandise({ ...(req.body || {}), user: req.user });
+  res.status(201).json({ item });
+}));
+
+api.get('/merchandise/issues', requirePerm('merch:read'), ah(async (_req, res) => {
+  res.json({ issues: await merchIssues() });
+}));
+
+api.post('/merchandise/issue', requirePerm('merch:issue'), ah(async (req, res) => {
+  const { participantId, item, size, desk } = req.body || {};
+  res.json(await issueMerch({ user: req.user, participantId, item, size, desk: desk || req.user.role }));
+}));
+
+api.post('/merchandise/return', requirePerm('merch:return'), ah(async (req, res) => {
+  const { issueId, participantId, item, reason } = req.body || {};
+  res.json(await returnMerch({ user: req.user, issueId, participantId, item, reason }));
 }));
 
 api.post('/merch/issue', requirePerm('merch:issue'), ah(async (req, res) => {

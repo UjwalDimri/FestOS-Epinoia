@@ -74,10 +74,8 @@ export async function computeAlerts(now = new Date()) {
 
   // Merch
   const merch = await M.MerchStock.find({}).lean();
-  const issued = await M.MerchIssue.aggregate([{ $match: { kind: 'original' } }, { $group: { _id: { item: '$item', size: '$size' }, n: { $sum: 1 } } }]);
   for (const s of merch) {
-    const used = issued.find((i) => i._id.item === s.item && i._id.size === s.size)?.n || 0;
-    const left = s.quantity - s.reserved - used;
+    const left = s.quantity - s.reserved - (s.issued || 0);
     if (left <= 0 && s.quantity > 0) add({ key: `MERCH_OUT_${s.item}_${s.size}`.replace(/\s+/g, '_'), ruleId: 'MERCH_OUT', severity: 'medium', ownerRole: 'merchandise_desk',
       title: `${s.item} size ${s.size} is out`, suggestedAction: 'Substitute a size and log it, or reorder.' });
   }
