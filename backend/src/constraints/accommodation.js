@@ -9,7 +9,12 @@ register({
   label: 'Housing pool matches the person (girls/boys blocks only for declared Female/Male; never force anyone outside the binary into them)',
   appliesTo: () => true,
   check: (p, loc) => {
-    if (loc.kind === 'external') return { ok: true };
+    if (loc.kind === 'external') {
+      const policy = loc.genderPolicy || 'unknown';
+      if (policy === 'boys' && p.housingCategory !== 'male') return { ok: false, reason: 'NO_SUITABLE_POOL' };
+      if (policy === 'girls' && p.housingCategory !== 'female') return { ok: false, reason: 'NO_SUITABLE_POOL' };
+      return { ok: true };
+    }
     if (loc.gender === 'all_gender') return { ok: true };
     if (p.housingCategory === 'female') return loc.gender === 'girls' ? { ok: true } : { ok: false, reason: 'NO_SUITABLE_POOL' };
     if (p.housingCategory === 'male') return loc.gender === 'boys' ? { ok: true } : { ok: false, reason: 'NO_SUITABLE_POOL' };

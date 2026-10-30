@@ -15,19 +15,27 @@ export function nightKeys(checkIn, checkOut) {
 export function buildLocations(rooms, properties, assumptions) {
   const radius = assumptions.campusRadiusKm ?? 1;
   const locs = [];
+  const externallyManagedPropertyIds = new Set(properties.filter((p) => p.propertyType !== 'college_hostel').map((p) => p.propertyId));
   for (const r of rooms) {
+    if (r.propertyId && externallyManagedPropertyIds.has(r.propertyId)) continue; // External properties are reserved through their contracted bed inventory.
+    const roomReady = ['available', 'ready'].includes(r.status);
     locs.push({
       key: r.roomId, kind: 'hostel', roomId: r.roomId, gender: r.gender, accessibility: r.accessibility, floor: r.floor, capacity: r.capacity,
       site: 'campus', group: r.block, costPerNight: 0, distanceKm: 0, transport: 'yes', status: r.status, closures: r.closures || [],
-      beds: Array.from({ length: r.capacity }, (_, i) => ({ bedNo: i + 1, intervals: [] })),
+      beds: !roomReady ? [] : r.beds?.length
+        ? r.beds.filter((b) => b.status === 'available').map((b, i) => ({ bedNo: Number(String(b.bedId).match(/(\d+)$/)?.[1] || i + 1), intervals: [] }))
+        : Array.from({ length: r.capacity }, (_, i) => ({ bedNo: i + 1, intervals: [] })),
     });
   }
   for (const p of properties) {
+    if (p.propertyType === 'college_hostel') continue; // Its beds are represented by Room documents.
+    const propertyOpen = ['available', 'active'].includes(p.status);
     locs.push({
       key: p.propertyId, kind: 'external', propertyId: p.propertyId, name: p.propertyName, gender: 'any', accessibility: p.accessibility, floor: null,
-      capacity: p.beds, site: (p.distanceKm ?? 99) <= radius ? 'campus' : p.propertyId, group: p.propertyId,
+      capacity: propertyOpen ? p.contractedBedCapacity ?? p.beds : 0, site: (p.distanceKm ?? 99) <= radius ? 'campus' : p.propertyId, group: p.propertyId,
+      genderPolicy: p.genderPolicy || 'unknown',
       costPerNight: p.costPerBedPerNight, distanceKm: p.distanceKm, transportAvailability: p.transportAvailability, status: p.status, closures: p.closures || [],
-      beds: Array.from({ length: p.beds }, (_, i) => ({ bedNo: i + 1, intervals: [] })),
+      beds: Array.from({ length: propertyOpen ? p.contractedBedCapacity ?? p.beds : 0 }, (_, i) => ({ bedNo: i + 1, intervals: [] })),
     });
   }
   return locs;
@@ -247,8 +255,8 @@ export function computeMetrics({ allocations, people, locations, assumptions, st
   for (const a of placed) for (const k of nightKeys(a.checkIn, a.checkOut)) nightPlaced.set(k, (nightPlaced.get(k) || 0) + 1);
   const perNight = [...nightDemand.keys()].sort().map((night) => {
     const t = atIST(night, '23:00');
-    const capacity = (locations || []).filter((l) => l.status !== 'closed' && !(l.closures || []).some((c) => overlaps(t, new Date(t.getTime() + 1), c.start, c.end)))
-      .reduce((s, l) => s + l.capacity, 0);
+    const capacity = (locations || []).filter((l) => (l.kind === 'hostel' ? ['available', 'ready'].includes(l.status) : ['available', 'active'].includes(l.status)) && !(l.closures || []).some((c) => overlaps(t, new Date(t.getTime() + 1), c.start, c.end)))
+      .reduce((s, l) => s + l.beds.length, 0);
     const demand = nightDemand.get(night) || 0;
     return { night, demand, placed: nightPlaced.get(night) || 0, capacity, shortfall: Math.max(0, demand - capacity) };
   });

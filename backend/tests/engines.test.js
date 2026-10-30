@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { allocate, nightKeys } from '../src/engines/allocation.js';
+import { allocate, nightKeys, buildLocations } from '../src/engines/allocation.js';
 import { normalizeParticipant, parseEquipment } from '../src/import/normalize.js';
 import { scorePair, findDuplicateCandidates } from '../src/import/dedupe.js';
 import { dietCoverage } from '../src/engines/food.js';
@@ -31,6 +31,19 @@ test('a bed is never shared by overlapping stays', () => {
   assert.equal(placed.length, 1);
   const unplaced = r.allocations.find((a) => a.status === 'unplaced');
   assert.ok(unplaced.reasonCodes.includes('NIGHT_SHORTAGE'));
+});
+
+test('allocation respects explicit bed slots and ignores rooms that are not ready', () => {
+  const r = room({ capacity: 2, beds: [{ bedId: 'R1-B1', status: 'blocked' }, { bedId: 'R1-B2', status: 'available' }] });
+  const result = run([person()], [r]);
+  assert.equal(result.allocations[0].bed.bedNo, 2);
+  assert.equal(run([person()], [room({ status: 'maintenance' })]).allocations[0].status, 'unplaced');
+});
+
+test('closed external properties and uncontracted beds are excluded from allocation', () => {
+  assert.equal(run([person({ housingCategory: 'unconfirmed' })], [], [prop({ status: 'closed' })]).allocations[0].status, 'unplaced');
+  const capped = run([person({ housingCategory: 'unconfirmed' }), person({ participantId: 'P2', housingCategory: 'unconfirmed' })], [], [prop({ beds: 5, contractedBedCapacity: 1 })]);
+  assert.equal(capped.allocations.filter((a) => a.status !== 'unplaced').length, 1);
 });
 
 test('cleaning buffer blocks a turnaround that is too quick', () => {
