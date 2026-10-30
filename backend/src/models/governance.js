@@ -77,7 +77,7 @@ const disruptionSchema = new Schema({
   disruptionId: { type: String, unique: true },
   type: String,
   params: Schema.Types.Mixed,
-  status: { type: String, enum: ['previewed', 'committed', 'discarded'], default: 'previewed' },
+  status: { type: String, enum: ['previewed', 'committing', 'committed', 'discarded'], default: 'previewed' },
   preview: Schema.Types.Mixed,
   result: Schema.Types.Mixed,
   requiresRisk: String,
@@ -85,7 +85,7 @@ const disruptionSchema = new Schema({
   committedBy: { userId: String, role: String },
   reason: String,
   committedAt: Date,
-}, { timestamps: true });
+}, { timestamps: true, minimize: false });
 
 export const DataIssue = model('DataIssue', dataIssueSchema);
 export const DuplicateCandidate = model('DuplicateCandidate', duplicateCandidateSchema);
