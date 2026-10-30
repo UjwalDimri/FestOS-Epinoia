@@ -25,9 +25,6 @@ export const api = express.Router();
 function contingentView(contingent, participantCount) {
   return {
     ...contingent,
-    name: contingent.contingentId,
-    institution: contingent.college,
-    contactPerson: contingent.leaderName,
     participantCount,
     declaredDelta: participantCount - (contingent.strengthDeclared || 0),
   };
@@ -116,22 +113,22 @@ api.post('/participants', requirePerm('participants:write'), ah(async (req, res)
   if (!['expected', 'checked_in', 'delayed', 'absent'].includes(checkInStatus)) throw badRequest('checkInStatus must be expected, checked_in, delayed or absent');
   if (body.isMinor != null && typeof body.isMinor !== 'boolean') throw badRequest('isMinor must be true or false');
   if (body.accommodationRequested != null && typeof body.accommodationRequested !== 'boolean') throw badRequest('accommodationRequested must be true or false');
-  const arrival = body.arrival ? new Date(body.arrival) : undefined;
-  const departure = body.departure ? new Date(body.departure) : undefined;
-  if ((arrival && Number.isNaN(arrival.getTime())) || (departure && Number.isNaN(departure.getTime()))) {
-    throw badRequest('arrival and departure must be valid dates');
+  const arrivalDateTime = body.arrivalDateTime || body.arrival ? new Date(body.arrivalDateTime || body.arrival) : undefined;
+  const departureDateTime = body.departureDateTime || body.departure ? new Date(body.departureDateTime || body.departure) : undefined;
+  if ((arrivalDateTime && Number.isNaN(arrivalDateTime.getTime())) || (departureDateTime && Number.isNaN(departureDateTime.getTime()))) {
+    throw badRequest('arrivalDateTime and departureDateTime must be valid dates');
   }
-  if (arrival && departure && departure <= arrival) throw badRequest('departure must be after arrival');
+  if (arrivalDateTime && departureDateTime && departureDateTime <= arrivalDateTime) throw badRequest('departureDateTime must be after arrivalDateTime');
   const participant = {
     participantId, name, contingentId, college: body.college || contingent.college,
     personType, isLeader: body.isLeader === true || personType === 'leader',
-    genderAsGiven: body.genderAsGiven ?? null,
+    gender: body.gender ?? body.genderAsGiven ?? null,
     housingCategory,
     age, isMinor: body.isMinor == null ? (age != null && age < 18) : body.isMinor,
     contact: body.contact || '',
-    accessibility: body.accessibility || { status: 'not_declared', needs: [] },
-    dietary: body.dietary || { status: 'unknown', needs: [] },
-    arrival, departure,
+    accessibilityNeeds: body.accessibilityNeeds || body.accessibility || { status: 'not_declared', needs: [] },
+    dietaryNeeds: body.dietaryNeeds || body.dietary || { status: 'unknown', needs: [] },
+    arrivalDateTime, departureDateTime,
     accommodationRequested: body.accommodationRequested ?? true,
     tshirtSize: body.tshirtSize || undefined,
     checkInStatus,
@@ -206,9 +203,9 @@ api.post('/contingents', requirePerm('contingents:write'), ah(async (req, res) =
   if (!Number.isInteger(strengthDeclared) || strengthDeclared < 0) throw badRequest('strengthDeclared must be a non-negative integer');
   const contingent = {
     contingentId, college, strengthDeclared,
-    leaderName: body.leaderName || body.contactPerson || '',
+    leader: body.leader || body.leaderName || body.contactPerson || '',
     leaderParticipantId: body.leaderParticipantId || null,
-    escortName: body.escortName || '', escortPersonId: body.escortPersonId || null,
+    escort: body.escort || body.escortName || '', escortPersonId: body.escortPersonId || null,
     preferencesRaw: body.preferencesRaw || '',
     preferences: Array.isArray(body.preferences) ? body.preferences : [],
   };
@@ -239,13 +236,15 @@ api.get('/contingents/:id', requirePerm('contingents:read'), ah(async (req, res)
 
 api.post('/participants/:id/reveal', ah(async (req, res) => {
   const { field, reason } = req.body || {};
-  if (!REVEALABLE[field]) throw badRequest(`Field "${field}" cannot be revealed`, { allowed: Object.keys(REVEALABLE) });
-  if (!REVEALABLE[field].includes(req.user.role)) throw forbidden(`Your role cannot reveal ${field}`);
+  const canonicalField = ({ accessibility: 'accessibilityNeeds', dietary: 'dietaryNeeds' })[field] || field;
+  if (!REVEALABLE[canonicalField]) throw badRequest(`Field "${field}" cannot be revealed`, { allowed: Object.keys(REVEALABLE) });
+  if (!REVEALABLE[canonicalField].includes(req.user.role)) throw forbidden(`Your role cannot reveal ${canonicalField}`);
   if (!reason || reason.trim().length < 5) throw badRequest('Give a reason (at least 5 characters). Every reveal is logged.');
   const p = await M.Participant.findOne({ participantId: req.params.id }).select('+contact').lean();
   if (!p) throw notFound('No such participant');
-  await appendAudit({ actor: { userId: req.user.userId, email: req.user.email, role: req.user.role }, action: 'SENSITIVE_REVEAL', entity: { type: 'Participant', id: p.participantId }, reason, risk: 'low', summary: { field } });
-  res.json({ participantId: p.participantId, field, value: field === 'contact' ? p.contact : field === 'accessibility' ? p.accessibility : p.dietary });
+  await appendAudit({ actor: { userId: req.user.userId, email: req.user.email, role: req.user.role }, action: 'SENSITIVE_REVEAL', entity: { type: 'Participant', id: p.participantId }, reason, risk: 'low', summary: { field: canonicalField } });
+  const value = canonicalField === 'contact' ? p.contact : canonicalField === 'accessibilityNeeds' ? p.accessibilityNeeds : p.dietaryNeeds;
+  res.json({ participantId: p.participantId, field: canonicalField, value });
 }));
 
 api.post('/participants/:id/housing', requirePerm('participants:write'), ah(async (req, res) => {

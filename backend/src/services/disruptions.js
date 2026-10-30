@@ -79,7 +79,7 @@ async function previewLateContingent(state, p) {
   if (!newArrival) throw badRequest('newArrival must be "YYYY-MM-DD HH:mm" IST');
   const members = state.people.filter((x) => x.contingentId === cid && x.personType === 'participant' && !x.quarantined);
   if (!members.length) throw notFound(`No participants in ${cid}`);
-  const shift = (x) => ({ ...x, arrival: new Date(Math.max(newArrival.getTime(), new Date(x.arrival).getTime())) });
+  const shift = (x) => ({ ...x, arrivalDateTime: new Date(Math.max(newArrival.getTime(), new Date(x.arrivalDateTime).getTime())) });
   const moved = members.map(shift);
   const movedIds = new Set(moved.map((m) => m.participantId));
   const { plan, allocs } = await currentAccommodation();
@@ -108,7 +108,7 @@ async function previewLateContingent(state, p) {
 }
 
 async function applyLateContingent(session, c) {
-  await M.Participant.updateMany({ participantId: { $in: c.memberIds } }, { arrival: c.newArrival }, { session });
+  await M.Participant.updateMany({ participantId: { $in: c.memberIds } }, { arrivalDateTime: c.newArrival }, { session });
   await M.Allocation.updateMany({ _id: { $in: c.releasedAllocIds } }, { status: 'released', overrideReason: 'Released: arrival changed' }, { session });
   await M.Allocation.insertMany(c.newAllocations.map((a) => ({ ...a, planId: c.planId, overrideReason: null })), { session });
   return { summary: { contingentId: c.contingentId, members: c.memberIds.length } };

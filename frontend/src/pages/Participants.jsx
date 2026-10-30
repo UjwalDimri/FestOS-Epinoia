@@ -39,7 +39,7 @@ export default function Participants() {
             {data.rows.map((p) => (
               <tr key={p.participantId} className="clickable" onClick={() => show(p.participantId)}>
                 <td>{p.participantId}</td><td>{p.name}</td><td>{p.contingentId}</td><td>{p.housingCategory || '—'}</td>
-                <td>{p.arrival ? new Date(new Date(p.arrival).getTime() + 19800000).toISOString().slice(0, 16).replace('T', ' ') : '—'}</td>
+                <td>{p.arrivalDateTime ? new Date(new Date(p.arrivalDateTime).getTime() + 19800000).toISOString().slice(0, 16).replace('T', ' ') : '—'}</td>
                 <td className={p.quarantined ? 'err' : ''}>{p.quarantined ? 'quarantined' : p.personType}</td>
               </tr>
             ))}
@@ -67,9 +67,9 @@ function Detail({ d, onClose }) {
       </div>
       <p className="muted">Contingent {p.contingentId} · {p.college} · {p.personType}{p.isLeader ? ' · leader' : ''}</p>
       <div className="row">
-        <div><b>Housing</b><div>{p.housingCategory || '—'} {p.genderAsGiven ? `(given: ${p.genderAsGiven})` : '(blank)'}</div></div>
-        <div><b>Accessibility</b><div>{p.accessibility?.status}{p.accessibility?.needs?.length ? `: ${p.accessibility.needs.join(', ')}` : ''}</div></div>
-        <div><b>Dietary</b><div>{p.dietary?.status}{p.dietary?.needs?.length ? `: ${p.dietary.needs.join(', ')}` : ''}</div></div>
+        <div><b>Housing</b><div>{p.housingCategory || '—'} {p.gender ? `(gender: ${p.gender})` : '(blank)'}</div></div>
+        <div><b>Accessibility</b><div>{p.accessibilityNeeds?.status}{p.accessibilityNeeds?.needs?.length ? `: ${p.accessibilityNeeds.needs.join(', ')}` : ''}</div></div>
+        <div><b>Dietary</b><div>{p.dietaryNeeds?.status}{p.dietaryNeeds?.needs?.length ? `: ${p.dietaryNeeds.needs.join(', ')}` : ''}</div></div>
         <div><b>Contact</b><div>{p.contactMasked || 'hidden for your role'}</div></div>
         <div><b>T-shirt</b><div>{p.tshirtSize || '—'}</div></div>
       </div>

@@ -83,10 +83,11 @@ Password for every account: **FestOS@2026** (set `SEED_PASSWORD` in `.env` to ch
 
 ### Team 1 data contracts
 
-- A participant is keyed by the source `participantId`; `contingentId` links to the contingent's stable source ID. Duplicate candidates remain reviewable records instead of being silently merged. Use `POST /participants` with `participantId`, `name` and an existing `contingentId`; the API defaults sensitive housing data to `unconfirmed` and masks returned fields by role.
-- A contingent is keyed by `contingentId`; `college` is its institution, `strengthDeclared` is the declared headcount, and leader/escort fields keep the source pack's relationships. `POST /contingents` accepts `contingentId` (or `name`), `college` (or `institution`), and optional leader, escort, and preference details.
-- Accommodation uses `Room` and `ExternalProperty` as capacity sources, `Plan` for a draft/active allocation run, and `Allocation` for each person's proposed or committed stay. Start with `POST /plans/accommodation`; inspect with `GET /accommodation/compare`, `GET /accommodation/active`, `GET /accommodation/unplaced`, and `GET /rooms`.
+- Participant fields follow the Team 1 sheet: `participantId` (ID), `name`, `college`, `contingentId`, `gender`, `age`, `contact`, `accessibilityNeeds`, `dietaryNeeds`, `arrivalDateTime`, `departureDateTime`, `accommodationRequested`, and `tshirtSize`. Declared/none/unknown states remain attached to the accessibility and dietary needs so blank data is not treated as a declaration. Duplicate candidates stay reviewable instead of being silently merged.
+- Contingents use `college`, `contingentId` (contingent number), `leader`, `escort`, `strengthDeclared`, and `preferences`. Use `POST /participants` with `participantId`, `name`, and an existing `contingentId`; use `POST /contingents` to create a contingent. Participant responses remain role-masked.
+- Accommodation uses `Room` fields `roomId`, `block`, `floor`, `gender`, `capacity`, `accessibility`, and `status`, plus `ExternalProperty` fields `propertyId`, `propertyName`, `beds`, `costPerBedPerNight`, `distanceKm`, and `transportAvailability`. `Plan` stores a run and `Allocation` stores each person's proposed or committed stay. Start with `POST /plans/accommodation`; inspect with `GET /accommodation/compare`, `GET /accommodation/active`, `GET /accommodation/unplaced`, and `GET /rooms`.
 - Write operations use the existing JSON resource responses and error shape (`{ "error": "...", "details": ... }`), and are recorded in the audit log. Participant creation requires participant-write permission; contingent creation is limited to the registration desk and Festival Director.
+- On startup, the backend renames the previous participant, contingent, room, and external-property paths in place so existing MongoDB records keep their data under the Team 1 field names.
 
 ## Live-test runbook
 
