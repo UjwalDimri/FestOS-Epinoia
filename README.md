@@ -68,7 +68,8 @@ Password for every account: **FestOS@2026** (set `SEED_PASSWORD` in `.env` to ch
 ## API overview (all under /api, Bearer token)
 
 - `POST /auth/login` · `GET /me` · `GET /dashboard` · `GET /alerts` · `POST /alerts/:key/ack`
-- `GET /participants` (masked) · `GET /participants/:id` · `POST /participants/:id/reveal` · `POST /participants/:id/housing`
+- `GET /participants` (masked, `page`, `limit`, `q`, `contingent`, `housing`, `flag` filters) · `GET /participants/:id` · `POST /participants` · `POST /participants/:id/reveal` · `POST /participants/:id/housing`
+- `GET /contingents` (paged, optional `q` search) · `GET /contingents/:id` (paged, role-masked members and declared-strength delta) · `POST /contingents`
 - `GET /data/issues` · `GET /data/headcount` · `GET /data/duplicates` · `POST /data/duplicates/:id/dismiss` · `POST /data/issues/:id/resolve`
 - `POST /plans/accommodation` · `POST /plans/schedule` · `POST /plans/:planId/activate` · `GET /accommodation/compare` · `GET /accommodation/active` · `GET /accommodation/unplaced` · `GET /rooms`
 - `GET /schedule/active`
@@ -79,6 +80,13 @@ Password for every account: **FestOS@2026** (set `SEED_PASSWORD` in `.env` to ch
 - `GET /constraints` · `GET /assumptions` · `PUT /assumptions/:key`
 - `GET /audit` · `GET /audit/verify`
 - `GET /export/accommodation.csv` · `GET /export/schedule.csv` · `GET /export/inventory.csv`
+
+### Team 1 data contracts
+
+- A participant is keyed by the source `participantId`; `contingentId` links to the contingent's stable source ID. Duplicate candidates remain reviewable records instead of being silently merged. Use `POST /participants` with `participantId`, `name` and an existing `contingentId`; the API defaults sensitive housing data to `unconfirmed` and masks returned fields by role.
+- A contingent is keyed by `contingentId`; `college` is its institution, `strengthDeclared` is the declared headcount, and leader/escort fields keep the source pack's relationships. `POST /contingents` accepts `contingentId` (or `name`), `college` (or `institution`), and optional leader, escort, and preference details.
+- Accommodation uses `Room` and `ExternalProperty` as capacity sources, `Plan` for a draft/active allocation run, and `Allocation` for each person's proposed or committed stay. Start with `POST /plans/accommodation`; inspect with `GET /accommodation/compare`, `GET /accommodation/active`, `GET /accommodation/unplaced`, and `GET /rooms`.
+- Write operations use the existing JSON resource responses and error shape (`{ "error": "...", "details": ... }`), and are recorded in the audit log. Participant creation requires participant-write permission; contingent creation is limited to the registration desk and Festival Director.
 
 ## Live-test runbook
 

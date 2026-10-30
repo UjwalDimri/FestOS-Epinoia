@@ -32,7 +32,7 @@ export const PERMISSIONS = {
   festival_director: ['*'],
   hospitality: [...READ_ALL, 'participants:write', 'participants:reveal', 'accommodation:write',
     'override:medium', 'exports:read', 'disruptions:commit'],
-  registration_desk: [...READ_ALL, 'participants:write', 'participants:reveal', 'dataquality:write',
+  registration_desk: [...READ_ALL, 'participants:write', 'participants:reveal', 'contingents:write', 'dataquality:write',
     'override:medium', 'disruptions:commit'],
   events_team: [...READ_ALL, 'schedule:write', 'override:medium', 'exports:read', 'disruptions:commit'],
   logistics_head: [...READ_ALL, 'inventory:write', 'override:medium', 'exports:read', 'disruptions:commit'],

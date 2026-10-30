@@ -22,6 +22,17 @@ import { env } from '../config/env.js';
 
 export const api = express.Router();
 
+function contingentView(contingent, participantCount) {
+  return {
+    ...contingent,
+    name: contingent.contingentId,
+    institution: contingent.college,
+    contactPerson: contingent.leaderName,
+    participantCount,
+    declaredDelta: participantCount - (contingent.strengthDeclared || 0),
+  };
+}
+
 // ---------- auth
 api.post('/auth/login', ah(async (req, res) => {
   if (env.authMode !== 'dev') throw badRequest('Password login is disabled in clerk mode');
@@ -83,6 +94,56 @@ api.get('/participants', requirePerm('participants:read'), ah(async (req, res) =
   res.json({ total, page, limit, rows: rows.map((r) => maskParticipant(r, req.user.role)) });
 }));
 
+api.post('/participants', requirePerm('participants:write'), ah(async (req, res) => {
+  const body = req.body || {};
+  const participantId = String(body.participantId || '').trim();
+  const name = String(body.name || '').trim();
+  const contingentId = String(body.contingentId || '').trim();
+  if (!participantId || !name || !contingentId) {
+    throw badRequest('participantId, name and contingentId are required');
+  }
+  const contingent = await M.Contingent.findOne({ contingentId }).lean();
+  if (!contingent) throw badRequest(`Unknown contingentId: ${contingentId}`);
+  const age = body.age == null || body.age === '' ? undefined : Number(body.age);
+  if (age !== undefined && (!Number.isFinite(age) || age < 0 || age > 120)) {
+    throw badRequest('age must be a number from 0 to 120');
+  }
+  const personType = body.personType || 'participant';
+  if (!['participant', 'escort', 'leader'].includes(personType)) throw badRequest('personType must be participant, escort or leader');
+  const housingCategory = body.housingCategory || 'unconfirmed';
+  if (!['female', 'male', 'all_gender', 'unconfirmed'].includes(housingCategory)) throw badRequest('housingCategory must be female, male, all_gender or unconfirmed');
+  const checkInStatus = body.checkInStatus || 'expected';
+  if (!['expected', 'checked_in', 'delayed', 'absent'].includes(checkInStatus)) throw badRequest('checkInStatus must be expected, checked_in, delayed or absent');
+  if (body.isMinor != null && typeof body.isMinor !== 'boolean') throw badRequest('isMinor must be true or false');
+  if (body.accommodationRequested != null && typeof body.accommodationRequested !== 'boolean') throw badRequest('accommodationRequested must be true or false');
+  const arrival = body.arrival ? new Date(body.arrival) : undefined;
+  const departure = body.departure ? new Date(body.departure) : undefined;
+  if ((arrival && Number.isNaN(arrival.getTime())) || (departure && Number.isNaN(departure.getTime()))) {
+    throw badRequest('arrival and departure must be valid dates');
+  }
+  if (arrival && departure && departure <= arrival) throw badRequest('departure must be after arrival');
+  const participant = {
+    participantId, name, contingentId, college: body.college || contingent.college,
+    personType, isLeader: body.isLeader === true || personType === 'leader',
+    genderAsGiven: body.genderAsGiven ?? null,
+    housingCategory,
+    age, isMinor: body.isMinor == null ? (age != null && age < 18) : body.isMinor,
+    contact: body.contact || '',
+    accessibility: body.accessibility || { status: 'not_declared', needs: [] },
+    dietary: body.dietary || { status: 'unknown', needs: [] },
+    arrival, departure,
+    accommodationRequested: body.accommodationRequested ?? true,
+    tshirtSize: body.tshirtSize || undefined,
+    checkInStatus,
+    quarantined: false, active: true,
+  };
+  const out = await runCommand({ user: req.user, action: 'PARTICIPANT_CREATED', entity: { type: 'Participant', id: participantId }, risk: 'low', event: 'participant.created' }, async (session) => {
+    const [created] = await M.Participant.create([participant], session ? { session } : {});
+    return { summary: { participantId, contingentId }, result: { participant: maskParticipant(created.toObject(), req.user.role) } };
+  });
+  res.status(201).json(out);
+}));
+
 api.get('/participants/:id', requirePerm('participants:read'), ah(async (req, res) => {
   const p = await M.Participant.findOne({ participantId: req.params.id }).lean();
   if (!p) throw notFound('No such participant');
@@ -105,6 +166,74 @@ api.get('/participants/:id', requirePerm('participants:read'), ah(async (req, re
     merch: merch.map((m) => ({ item: m.item, size: m.size, kind: m.kind, desk: m.desk, issuedAt: m.issuedAt })),
     duplicateCandidates: dupes.map((d) => ({ other: d.a === p.participantId ? d.b : d.a, score: d.score, status: d.status })),
     planId: plan?.planId || null,
+  });
+}));
+
+// ---------- contingents
+api.get('/contingents', requirePerm('contingents:read'), ah(async (req, res) => {
+  const q = {};
+  if (req.query.q) {
+    const term = String(req.query.q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    q.$or = [{ contingentId: new RegExp(term, 'i') }, { college: new RegExp(term, 'i') }];
+  }
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const [contingents, totals] = await Promise.all([
+    M.Contingent.find(q).sort({ contingentId: 1 }).skip((page - 1) * limit).limit(limit).lean(),
+    M.Contingent.countDocuments(q),
+  ]);
+  const ids = contingents.map((c) => c.contingentId);
+  const counts = await M.Participant.aggregate([
+    { $match: { contingentId: { $in: ids }, personType: 'participant', active: true } },
+    { $group: { _id: '$contingentId', count: { $sum: 1 } } },
+  ]);
+  const countByContingent = new Map(counts.map((x) => [x._id, x.count]));
+  res.json({
+    total: totals, page, limit,
+    rows: contingents.map((c) => {
+      const participantCount = countByContingent.get(c.contingentId) || 0;
+      return contingentView(c, participantCount);
+    }),
+  });
+}));
+
+api.post('/contingents', requirePerm('contingents:write'), ah(async (req, res) => {
+  const body = req.body || {};
+  const contingentId = String(body.contingentId || body.name || '').trim();
+  const college = String(body.college || body.institution || '').trim();
+  if (!contingentId || !college) throw badRequest('contingentId (or name) and college (or institution) are required');
+  const strengthDeclared = body.strengthDeclared == null ? 0 : Number(body.strengthDeclared);
+  if (!Number.isInteger(strengthDeclared) || strengthDeclared < 0) throw badRequest('strengthDeclared must be a non-negative integer');
+  const contingent = {
+    contingentId, college, strengthDeclared,
+    leaderName: body.leaderName || body.contactPerson || '',
+    leaderParticipantId: body.leaderParticipantId || null,
+    escortName: body.escortName || '', escortPersonId: body.escortPersonId || null,
+    preferencesRaw: body.preferencesRaw || '',
+    preferences: Array.isArray(body.preferences) ? body.preferences : [],
+  };
+  const out = await runCommand({ user: req.user, action: 'CONTINGENT_CREATED', entity: { type: 'Contingent', id: contingentId }, risk: 'low', event: 'contingent.created' }, async (session) => {
+    const [created] = await M.Contingent.create([contingent], session ? { session } : {});
+    return { summary: { contingentId, college }, result: { contingent: contingentView(created.toObject(), 0) } };
+  });
+  res.status(201).json(out);
+}));
+
+api.get('/contingents/:id', requirePerm('contingents:read'), ah(async (req, res) => {
+  const contingent = await M.Contingent.findOne({ contingentId: req.params.id }).lean();
+  if (!contingent) throw notFound('No such contingent');
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const q = { contingentId: contingent.contingentId, active: true };
+  const [people, memberCount, participantCount] = await Promise.all([
+    M.Participant.find(q).sort({ participantId: 1 }).skip((page - 1) * limit).limit(limit).lean(),
+    M.Participant.countDocuments(q),
+    M.Participant.countDocuments({ ...q, personType: 'participant' }),
+  ]);
+  res.json({
+    contingent: contingentView(contingent, participantCount),
+    total: memberCount, page, limit,
+    participants: people.map((p) => maskParticipant(p, req.user.role)),
   });
 }));
 
