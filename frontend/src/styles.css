@@ -288,4 +288,38 @@ tbody tr:nth-child(4) { animation-delay: 75ms; } tbody tr:nth-child(5) { animati
 @keyframes orbit-enter { from { opacity: 0; transform: scale(.93) rotate(-8deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
 @media (max-width: 900px) { .module-columns { grid-template-columns: 1fr; } .hero-orbit { right: 6%; } }
 @media (max-width: 600px) { .module-hero { align-items: flex-start; flex-direction: column; gap: 17px; min-height: 200px; padding: 20px; } .hero-orbit { opacity: .5; right: -78px; top: -36px; } .metric-strip { grid-template-columns: repeat(2,minmax(0,1fr)); } .metric-tile { min-height: 102px; padding: 12px; } .stock-state-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .action-row { align-items: flex-start; flex-direction: column; } }
-@media (prefers-reduced-motion: reduce) { .module-content, .module-hero > div:first-child, .hero-orbit, .metric-tile, tbody tr, .motion-in { animation: none !important; } .card, .metric-tile, .capacity-bar span, button.primary, button.ghost, .button-light { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .module-content, .module-hero > div:first-child, .hero-orbit, .metric-tile, tbody tr, .motion-in, .page-transition, .login-content, .login-card, .dialog, .toast, .dialog-backdrop { animation: none !important; } .card, .metric-tile, .capacity-bar span, button.primary, button.ghost, .button-light, .stat, .metrics-list > div, .impact-item { transition: none !important; } }
+
+/* A little more character across every workspace page, without distracting motion. */
+.page-transition { animation: page-arrive .48s cubic-bezier(.2,.72,.24,1) both; transform-origin: 50% 8%; }
+.workspace { background: radial-gradient(ellipse at 92% 0%, rgb(233 229 216 / 38%), transparent 35%), var(--canvas); }
+.topbar { transition: box-shadow .2s ease, background-color .2s ease; }
+.topbar:focus-within { box-shadow: 0 4px 14px rgb(23 37 59 / 5%); }
+.nav-item { position: relative; overflow: hidden; }
+.nav-item::before { background: #c7d3c7; border-radius: 2px; content: ''; inset: 8px auto 8px 0; opacity: 0; position: absolute; transform: scaleY(.35); transition: transform .2s ease, opacity .2s ease; width: 2px; }
+.nav-item.on::before { opacity: .9; transform: scaleY(1); }
+.nav-indicator { transition: transform .2s ease, background-color .2s ease; }
+.nav-item:hover .nav-indicator { transform: scale(1.35); }
+.module-tabs button { transition: color .16s ease, border-color .16s ease, background-color .16s ease; }
+.module-tabs button.selected { background: linear-gradient(180deg, transparent, rgb(51 72 62 / 5%)); }
+.stat, .metrics-list > div, .impact-item { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.stat:hover, .metrics-list > div:hover, .impact-item:hover { border-color: #d2dbd1; box-shadow: 0 5px 15px rgb(36 55 45 / 5%); transform: translateY(-2px); }
+.table-scroll tbody tr { transition: background-color .15s ease; }
+.login-screen::before { background: radial-gradient(ellipse at 50% 40%, rgb(232 228 215 / 55%), transparent 58%); content: ''; inset: 0; pointer-events: none; position: absolute; }
+.login-brand, .login-content, .login-footer { z-index: 1; }
+.login-content { animation: hero-arrive .55s cubic-bezier(.2,.7,.2,1) both; }
+.login-card { animation: tile-arrive .6s .08s cubic-bezier(.2,.7,.2,1) both; box-shadow: 0 12px 34px rgb(29 42 34 / 6%); }
+.dialog-backdrop { animation: backdrop-in .18s ease both; backdrop-filter: blur(3px); }
+.dialog { animation: dialog-in .24s cubic-bezier(.2,.7,.2,1) both; }
+.toast { animation: toast-in .24s cubic-bezier(.2,.7,.2,1) both; }
+.menu-toggle span { transition: transform .18s ease, opacity .18s ease; }
+.menu-toggle[aria-expanded="true"] span:first-child { transform: translateY(5.5px) rotate(45deg); }
+.menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.menu-toggle[aria-expanded="true"] span:last-child { transform: translateY(-5.5px) rotate(-45deg); }
+@keyframes page-arrive { from { opacity: 0; transform: translateY(9px) scale(.997); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}

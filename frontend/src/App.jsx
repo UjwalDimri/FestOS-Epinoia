@@ -46,7 +46,7 @@ export default function App() {
   <div className="workspace">
    <DemoBanner/>
    <header className="topbar"><button className="menu-toggle" aria-label={menuOpen?'Close navigation':'Open navigation'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><span/><span/><span/></button><div className="breadcrumbs"><span>FestOS</span><span className="breadcrumb-separator">/</span><strong>{label||'Page not found'}</strong></div><div className="topbar-right"><div className="user-details"><span className="user-name">{user.name}</span><span className="user-role">{user.roleLabel}</span></div><span className="avatar" aria-hidden="true">{String(user.name||'F').split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase()}</span><button className="signout" onClick={logout}>Sign out</button></div></header>
-   <main className="content"><ErrorBoundary key={page}>{selected?<><PageHeader title={label} description={descriptions[key]}/><Page user={user}/></>:<ErrorState error="Page not found." retry={()=>{location.hash='dashboard';}}/>}</ErrorBoundary></main>
+   <main className="content"><div className="page-transition" key={page}><ErrorBoundary><>{selected?<><PageHeader title={label} description={descriptions[key]}/><Page user={user}/></>:<ErrorState error="Page not found." retry={()=>{location.hash='dashboard';}}/>}</></ErrorBoundary></div></main>
   </div>
  </div>;
 }
