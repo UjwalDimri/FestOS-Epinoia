@@ -25,3 +25,27 @@ textarea { width: 100%; min-height: 80px; font-family: ui-monospace, monospace; 
 pre { background: #0e0f12; padding: 10px; border-radius: 4px; overflow: auto; font-size: 12px; max-height: 360px; }
 .clickable { cursor: pointer; }
 .clickable:hover { background: #1b1e25; }
+.page-header { margin: 4px 0 14px; }
+.page-header h1 { font-size: 24px; margin: 0; }
+.page-header p { margin: 4px 0; }
+.demo-banner { padding: 8px 16px; background: #654500; color: #fff3c4; font-weight: 700; letter-spacing: .04em; }
+.warning { padding: 10px 12px; border-left: 4px solid #f0b429; background: #302711; margin: 10px 0; }
+.badge { display: inline-block; border: 1px solid currentColor; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+.badge-info { color: #8fb8ff; }
+.badge-success { color: #6fcf97; }
+.badge-warning { color: #f0b429; }
+.badge-danger { color: #ff6b6b; }
+.table-scroll { overflow-x: auto; }
+.form-field { display: grid; gap: 5px; }
+.form-field small { font-size: 12px; }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #000a; padding: 16px; }
+.dialog { width: min(520px, 100%); box-shadow: 0 16px 50px #0009; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid #8fb8ff; outline-offset: 2px; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.user-label { margin-left: auto; }
+@media (max-width: 850px) {
+  header { flex-wrap: wrap; }
+  header nav { order: 3; width: 100%; display: flex; overflow-x: auto; }
+  .user-label { margin-left: 0; }
+  main { padding: 12px; }
+}
