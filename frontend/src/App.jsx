@@ -18,7 +18,9 @@ const PAGES = [
 ];
 export default function App() {
  const [user,setUser]=useState(null); const [page,setPage]=useState(location.hash.slice(1)||'dashboard'); const [menuOpen,setMenuOpen]=useState(false);
+ const [theme,setTheme]=useState(()=>localStorage.getItem('festos_theme')||'light');
  const [booting,setBooting]=useState(Boolean(getToken())); const [sessionError,setSessionError]=useState('');
+ useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem('festos_theme',theme);},[theme]);
  useEffect(()=>{ setUnauthorizedHandler(()=>{ setToken(null); setUser(null); setSessionError('Your session expired. Sign in again.'); }); },[]);
  useEffect(()=>{ const onHash=()=>{setPage(location.hash.slice(1)||'dashboard');setMenuOpen(false);}; addEventListener('hashchange',onHash); return()=>removeEventListener('hashchange',onHash); },[]);
  useEffect(()=>{ if(!getToken()){setBooting(false);return;} api('/me').then(d=>setUser(d.user)).catch(e=>{ if(e.status===401){setToken(null);setSessionError('Your session expired. Sign in again.');} else setSessionError(`Could not validate your session: ${e.message}`); }).finally(()=>setBooting(false)); },[]);
@@ -45,7 +47,7 @@ export default function App() {
   {menuOpen&&<button className="mobile-scrim" aria-label="Close navigation" onClick={()=>setMenuOpen(false)}/>}
   <div className="workspace">
    <DemoBanner/>
-   <header className="topbar"><button className="menu-toggle" aria-label={menuOpen?'Close navigation':'Open navigation'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><span/><span/><span/></button><div className="breadcrumbs"><span>FestOS</span><span className="breadcrumb-separator">/</span><strong>{label||'Page not found'}</strong></div><div className="topbar-right"><div className="user-details"><span className="user-name">{user.name}</span><span className="user-role">{user.roleLabel}</span></div><span className="avatar" aria-hidden="true">{String(user.name||'F').split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase()}</span><button className="signout" onClick={logout}>Sign out</button></div></header>
+   <header className="topbar"><button className="menu-toggle" aria-label={menuOpen?'Close navigation':'Open navigation'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}><span/><span/><span/></button><div className="breadcrumbs"><span>FestOS</span><span className="breadcrumb-separator">/</span><strong>{label||'Page not found'}</strong></div><div className="topbar-right"><button className="theme-toggle" type="button" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label={`Switch to ${theme==='dark'?'light':'dark'} theme`} title={`Switch to ${theme==='dark'?'light':'dark'} theme`}><span aria-hidden="true">{theme==='dark'?'☼':'☾'}</span><small>{theme==='dark'?'Light':'Dark'}</small></button><div className="user-details"><span className="user-name">{user.name}</span><span className="user-role">{user.roleLabel}</span></div><span className="avatar" aria-hidden="true">{String(user.name||'F').split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase()}</span><button className="signout" onClick={logout}>Sign out</button></div></header>
    <main className="content"><div className="page-transition" key={page}><ErrorBoundary><>{selected?<><PageHeader title={label} description={descriptions[key]}/><Page user={user}/></>:<ErrorState error="Page not found." retry={()=>{location.hash='dashboard';}}/>}</></ErrorBoundary></div></main>
   </div>
  </div>;
