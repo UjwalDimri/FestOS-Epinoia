@@ -328,7 +328,7 @@ async function previewLateContingent(state, p, _user, session) {
   // Preserve each participant's arrival unless the new arrival is later.
   const shift = (person) => ({
     ...person,
-    arrival: arrivalAfterDelay(person.arrival, newArrival),
+    arrivalDateTime: arrivalAfterDelay(person.arrivalDateTime, newArrival),
   });
 
   const moved = members.map(shift);
@@ -446,7 +446,7 @@ async function applyLateContingent(session, c) {
       { participantId: member.participantId },
       {
         $set: {
-          arrival: member.arrival,
+          arrivalDateTime: member.arrivalDateTime,
         },
       },
       { session }

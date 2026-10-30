@@ -12,4 +12,11 @@ export const disruptionsService = { list: () => call('disruptions', '/disruption
 export const auditService = { list: (limit = 100) => call('audit', `/audit?limit=${limit}`), verify: () => call('verify', '/audit/verify') };
 export const dataQualityService = { headcount: () => call('headcount', '/data/headcount'), issues: (query = '') => call('issues', `/data/issues${query}`), duplicates: () => call('duplicates', '/data/duplicates'), dismissDuplicate: (id, reason) => write(`/data/duplicates/${encodeURIComponent(id)}/dismiss`, { method: 'POST', body: { reason } }, () => mocks.duplicateDismissed(id)), resolveIssue: (id, accept, reason) => write(`/data/issues/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: { accept, reason } }, () => mocks.issueResolved(id, accept)) };
 export const logisticsService = { inventory: () => call('inventory', '/inventory'), merch: () => call('merch', '/merch'), vendors: () => call('vendors', '/vendors'), coverage: () => call('coverage', '/vendors/coverage') };
+export const merchandiseService = {
+ catalogue: () => call('merchandiseCatalogue', '/merchandise'),
+ issues: () => call('merchandiseIssues', '/merchandise/issues'),
+ save: (body) => write('/merchandise', { method: 'POST', body }, () => mocks.savedMerchandise(body)),
+ issue: (body) => write('/merchandise/issue', { method: 'POST', body }, () => mocks.issuedMerchandise(body)),
+ return: (body) => write('/merchandise/return', { method: 'POST', body }, () => mocks.returnedMerchandise(body)),
+};
 export const exportService = { downloadCsv: (kind) => DEMO_MODE ? Promise.resolve(mocks.exportCsv(kind)) : apiFile(`/export/${encodeURIComponent(kind)}.csv`) };

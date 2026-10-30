@@ -82,6 +82,15 @@ const merchStockSchema = new Schema({
 });
 merchStockSchema.index({ item: 1, size: 1 }, { unique: true });
 
+const merchCatalogSchema = new Schema({
+  item: { type: String, required: true, unique: true, trim: true },
+  name: { type: String, required: true, trim: true },
+  description: { type: String, default: '' },
+  eligibility: { type: String, enum: ['participants', 'everyone'], default: 'participants' },
+  sizes: { type: [String], default: [] },
+  active: { type: Boolean, default: true },
+}, { timestamps: true });
+
 const merchIssueSchema = new Schema({
   participantId: String,
   item: String,
@@ -93,6 +102,8 @@ const merchIssueSchema = new Schema({
   issuedByRole: String,
   reason: String,
   issuedAt: { type: Date, default: Date.now },
+  returnedAt: { type: Date, default: null },
+  returnReason: { type: String, default: null },
 });
 // The duplicate-claim guard: one original issue per person per item, enforced by the database.
 merchIssueSchema.index({ participantId: 1, item: 1 }, { unique: true, partialFilterExpression: { kind: 'original' } });
@@ -118,4 +129,5 @@ export const InventoryAuditCount = model('InventoryAuditCount', auditCountSchema
 export const ReorderSuggestion = model('ReorderSuggestion', reorderSchema);
 export const LogisticsDisruption = model('LogisticsDisruption', disruptionSchema);
 export const MerchStock = model('MerchStock', merchStockSchema);
+export const MerchCatalog = model('MerchCatalog', merchCatalogSchema);
 export const MerchIssue = model('MerchIssue', merchIssueSchema);

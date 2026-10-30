@@ -24,34 +24,34 @@ export function normalizeParticipant(row, festEnd) {
   const splitList = (v) => (blank(v) ? [] : String(v).split(/[;|]/).map((s) => s.trim()).filter(Boolean));
   const accRaw = splitList(row.accessibility_needs);
   const accNeeds = accRaw.filter((s) => !EXPLICIT_NONE.test(s)).map((s) => ACCESSIBILITY_CODES[s] || s.toLowerCase().replace(/\W+/g, '_'));
-  let accessibility;
-  if (accNeeds.length) accessibility = { status: 'declared', needs: accNeeds };
-  else if (accRaw.some((s) => EXPLICIT_NONE.test(s))) accessibility = { status: 'declared_none', needs: [] };
-  else accessibility = { status: 'not_declared', needs: [] };
+  let accessibilityNeeds;
+  if (accNeeds.length) accessibilityNeeds = { status: 'declared', needs: accNeeds };
+  else if (accRaw.some((s) => EXPLICIT_NONE.test(s))) accessibilityNeeds = { status: 'declared_none', needs: [] };
+  else accessibilityNeeds = { status: 'not_declared', needs: [] };
 
   const dietRaw = splitList(row.dietary_needs);
   const dietNeeds = dietRaw.filter((s) => !EXPLICIT_NONE.test(s)).map((s) => DIET_CODES[s] || s.toLowerCase().replace(/\W+/g, '_'));
-  let dietary;
-  if (dietNeeds.length) dietary = { status: 'declared', needs: dietNeeds };
-  else if (dietRaw.some((s) => EXPLICIT_NONE.test(s))) dietary = { status: 'declared_none', needs: [] };
+  let dietaryNeeds;
+  if (dietNeeds.length) dietaryNeeds = { status: 'declared', needs: dietNeeds };
+  else if (dietRaw.some((s) => EXPLICIT_NONE.test(s))) dietaryNeeds = { status: 'declared_none', needs: [] };
   else {
-    dietary = { status: 'unknown', needs: [] };
+    dietaryNeeds = { status: 'unknown', needs: [] };
     issues.push({ code: 'DIETARY_NOT_PROVIDED', severity: 'medium', message: 'Dietary field is blank. Treated as unknown, never as "no restriction".' });
   }
 
-  const arrival = parseIST(row.arrival_datetime);
-  const departure = parseIST(row.departure_datetime);
+  const arrivalDateTime = parseIST(row.arrival_datetime);
+  const departureDateTime = parseIST(row.departure_datetime);
   let quarantined = false;
-  if (!arrival || !departure) {
+  if (!arrivalDateTime || !departureDateTime) {
     issues.push({ code: 'TIMING_UNPARSEABLE', severity: 'high', message: 'Arrival or departure could not be parsed' });
     quarantined = true;
   } else {
-    if (departure <= arrival) {
-      issues.push({ code: 'ARRIVAL_AFTER_DEPARTURE', severity: 'high', message: `Arrives ${fmtIST(arrival)} but departs ${fmtIST(departure)}. Quarantined from plans until resolved.` });
+    if (departureDateTime <= arrivalDateTime) {
+      issues.push({ code: 'ARRIVAL_AFTER_DEPARTURE', severity: 'high', message: `Arrives ${fmtIST(arrivalDateTime)} but departs ${fmtIST(departureDateTime)}. Quarantined from plans until resolved.` });
       quarantined = true;
     }
-    if (arrival > festEnd) {
-      issues.push({ code: 'ARRIVES_AFTER_FEST', severity: 'high', message: `Arrives ${fmtIST(arrival)}, after the fest ends.` });
+    if (arrivalDateTime > festEnd) {
+      issues.push({ code: 'ARRIVES_AFTER_FEST', severity: 'high', message: `Arrives ${fmtIST(arrivalDateTime)}, after the fest ends.` });
       quarantined = true;
     }
   }
@@ -67,8 +67,8 @@ export function normalizeParticipant(row, festEnd) {
     doc: {
       participantId: id, name: row.name, contingentId: row.contingent_id, college: row.college, personType: 'participant',
       raw: row, gender: genderRaw, housingCategory, age: Number.isFinite(age) ? age : null, isMinor,
-      contact, accessibilityNeeds: accessibility, dietaryNeeds: dietary,
-      arrivalDateTime: arrival, departureDateTime: departure, accommodationRequested,
+      contact, accessibilityNeeds, dietaryNeeds,
+      arrivalDateTime, departureDateTime, accommodationRequested,
       tshirtSize: blank(row.tshirt_size) ? null : row.tshirt_size.trim().toUpperCase(),
       quarantined, active: !quarantined,
     },
