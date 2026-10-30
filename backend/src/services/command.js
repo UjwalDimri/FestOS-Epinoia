@@ -54,7 +54,10 @@ export async function runCommand(meta, fn) {
     try {
       await session.withTransaction(async () => {
         out = await fn(session);
-        await appendAudit({ actor, action, entity, reason, risk, summary: out?.summary, disruptionId }, session);
+        if (!out?.skipAudit) {
+          await appendAudit({ actor, action, entity, reason, risk, summary: out?.summary, disruptionId }, session);
+          for (const entry of out?.additionalAudits || []) await appendAudit({ actor, ...entry }, session);
+        }
       });
     } finally {
       await session.endSession();
@@ -63,7 +66,7 @@ export async function runCommand(meta, fn) {
     out = await fn(null);
     await appendAudit({ actor, action, entity, reason, risk, summary: out?.summary, disruptionId }, null);
   }
-  emit(event || action, { action, entity, actor });
+  if (!out?.skipAudit) emit(event || action, { action, entity, actor });
   return out?.result ?? out;
 }
 

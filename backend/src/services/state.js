@@ -7,26 +7,36 @@ import { generateSchedule } from '../engines/schedule.js';
 import { dietCoverage, summarizeCoverage } from '../engines/food.js';
 import { istDateKey, parseIST, dateRangeKeys } from '../utils/time.js';
 
-export async function loadState() {
-  const [assumptions, settings, people, contingents, rooms, properties, events, venues, registrations, stock, vendors, incidents, judges] = await Promise.all([
-    getAssumptions(), loadConstraintSettings(),
-    M.Participant.find({}).select('+contact').lean(),
-    M.Contingent.find({}).lean(),
-    M.Room.find({}).lean(),
-    M.ExternalProperty.find({}).lean(),
-    M.Event.find({}).lean(),
-    M.Venue.find({}).lean(),
-    M.Registration.find({}).lean(),
-    M.StockBalance.find({}).lean(),
-    M.Vendor.find({}).lean(),
-    M.VendorIncident.find({}).lean(),
-    M.Judge.find({}).lean(),
-  ]);
+const inSession = (query, session) => session ? query.session(session) : query;
+
+export async function loadState(session) {
+  const reads = [
+    () => getAssumptions(session), () => loadConstraintSettings(session),
+    () => inSession(M.Participant.find({}).select('+contact'), session).lean(),
+    () => inSession(M.Contingent.find({}), session).lean(),
+    () => inSession(M.Room.find({}), session).lean(),
+    () => inSession(M.ExternalProperty.find({}), session).lean(),
+    () => inSession(M.Event.find({}), session).lean(),
+    () => inSession(M.Venue.find({}), session).lean(),
+    () => inSession(M.Registration.find({}), session).lean(),
+    () => inSession(M.StockBalance.find({}), session).lean(),
+    () => inSession(M.Vendor.find({}), session).lean(),
+    () => inSession(M.VendorIncident.find({}), session).lean(),
+    () => inSession(M.Judge.find({}), session).lean(),
+  ];
+  let values;
+  if (session) {
+    values = [];
+    for (const read of reads) values.push(await read());
+  } else {
+    values = await Promise.all(reads.map((read) => read()));
+  }
+  const [assumptions, settings, people, contingents, rooms, properties, events, venues, registrations, stock, vendors, incidents, judges] = values;
   return { assumptions, settings, people, contingents, rooms, properties, events, venues, registrations, stock, vendors, incidents, judges };
 }
 
-export async function activePlan(type) {
-  return M.Plan.findOne({ type, status: 'active' }).lean();
+export async function activePlan(type, session) {
+  return inSession(M.Plan.findOne({ type, status: 'active' }), session).lean();
 }
 
 export function accommodationRun(state, { strategy = 'balanced', budgetMode = 'respect', pinned = [], people, rooms, properties } = {}) {

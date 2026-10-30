@@ -80,12 +80,14 @@ export async function ensureAssumptions() {
   cache = null;
 }
 
-export async function getAssumptions() {
-  if (cache) return cache;
-  const docs = await Assumption.find({}).lean();
+export async function getAssumptions(session) {
+  if (cache && !session) return cache;
+  const query = Assumption.find({});
+  if (session) query.session(session);
+  const docs = await query.lean();
   const out = Object.fromEntries(Object.entries(DEFAULT_ASSUMPTIONS).map(([k, v]) => [k, v.value]));
   for (const d of docs) out[d.key] = d.value;
-  cache = out;
+  if (!session) cache = out;
   return out;
 }
 
