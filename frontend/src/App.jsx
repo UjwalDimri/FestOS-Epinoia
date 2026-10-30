@@ -15,7 +15,9 @@ import Vendors from './pages/Vendors.jsx';
 import AccommodationOps from './pages/AccommodationOps.jsx';
 const PAGES = [
  ['dashboard','Control tower',Dashboard], ['participants','People',Participants], ['plans','Accommodation & schedule',Plans],
- ['disruptions','Disruptions',Disruptions], ['data','Data quality',DataQuality], ['audit','Audit',Audit], ['logistics','Logistics',Logistics], ['merchandise','Merchandise',Merchandise], ['accommodation', 'Accommodation desk', AccommodationOps], ['vendors','Food & vendors',Vendors];
+ ['disruptions','Disruptions',Disruptions], ['data','Data quality',DataQuality], ['audit','Audit',Audit], ['logistics','Logistics',Logistics], ['merchandise','Merchandise',Merchandise],
+ ['accommodation','Accommodation desk',AccommodationOps], ['vendors','Food & vendors',Vendors],
+];
 
 export default function App() {
  const [user,setUser]=useState(null); const [page,setPage]=useState(location.hash.slice(1)||'dashboard'); const [menuOpen,setMenuOpen]=useState(false);
@@ -34,10 +36,10 @@ export default function App() {
   ['Overview',[['dashboard','Control tower']]],
   ['People',[['participants','People']]],
   ['Operations',[['plans','Accommodation & schedule'],['accommodation','Accommodation desk'],['disruptions','Disruptions']]],
-  ['Resources',[['logistics','Logistics'],['merchandise','Merchandise']]],
+  ['Resources',[['logistics','Logistics'],['merchandise','Merchandise'],['vendors','Food & vendors']]],
   ['Administration',[['data','Data quality'],['audit','Audit']]],
  ];
- const descriptions={dashboard:'A live view of festival readiness, open alerts and operational pressure.',participants:'Search and review participant records with role-aware field visibility.',plans:'Review accommodation capacity and schedule plans returned by the operations engine.',accommodation:'Manage property capacity, room readiness, allocation previews, arrivals and departures.',disruptions:'Preview operational impact before an authorized change is committed.',data:'Review reported data issues and duplicate candidates.',audit:'Verify the audit chain and inspect recorded operational actions.',logistics:'Manage inventory, locations, requests, transfers and purchasing.',merchandise:'Manage merchandise stock, participant issues and returns.'};
+ const descriptions={dashboard:'A live view of festival readiness, open alerts and operational pressure.',participants:'Search and review participant records with role-aware field visibility.',plans:'Review accommodation capacity and schedule plans returned by the operations engine.',accommodation:'Manage property capacity, room readiness, allocation previews, arrivals and departures.',disruptions:'Preview operational impact before an authorized change is committed.',data:'Review reported data issues and duplicate candidates.',audit:'Verify the audit chain and inspect recorded operational actions.',logistics:'Manage inventory, locations, requests, transfers and purchasing.',merchandise:'Manage merchandise stock, participant issues and returns.',vendors:'Track vendor compliance, dietary coverage, meal service, and settlement.'};
  return <div className="app-shell">
   <aside className={`sidebar${menuOpen?' sidebar-open':''}`} aria-label="Application navigation">
    <div className="brand"><span className="brand-mark" aria-hidden="true">F</span><span><b>FestOS</b><small>FESTIVAL OPERATIONS</small></span></div>
