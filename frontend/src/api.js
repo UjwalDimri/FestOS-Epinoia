@@ -45,7 +45,8 @@ async function request(path, { method = 'GET', body, signal, headers = {}, timeo
     return data;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    throw new NetworkError(error.name === 'AbortError' ? 'Request timed out.' : 'Could not reach the FestOS API.', { kind: error.name === 'AbortError' ? 'timeout' : 'network' });
+    const canceled = signal?.aborted;
+    throw new NetworkError(canceled ? 'Request canceled.' : error.name === 'AbortError' ? 'Request timed out.' : 'Could not reach the FestOS API.', { kind: canceled ? 'aborted' : error.name === 'AbortError' ? 'timeout' : 'network' });
   } finally {
     clearTimeout(timer); signal?.removeEventListener('abort', abort);
   }
@@ -53,13 +54,23 @@ async function request(path, { method = 'GET', body, signal, headers = {}, timeo
 export const api = request;
 export async function apiFile(path, { signal } = {}) {
   const token = getToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
   let response;
-  try { response = await fetch(`${BASE_URL}${path}`, { signal, headers: token ? { Authorization: `Bearer ${token}` } : {} }); }
-  catch { throw new NetworkError('Could not reach the FestOS API.'); }
-  if (response.status === 401) unauthorizedHandler();
-  if (!response.ok) {
-    let payload = {}; try { payload = await response.json(); } catch {}
-    const Type = errorType(response.status); throw new Type(payload.error || `Request failed (${response.status})`, { status: response.status, details: payload.details, kind: 'http' });
+  try {
+    response = await fetch(`${BASE_URL}${path}`, { signal: controller.signal, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (response.status === 401) unauthorizedHandler();
+    if (!response.ok) {
+      let payload = {}; try { payload = await response.json(); } catch {}
+      const Type = errorType(response.status); throw new Type(payload.error || `Request failed (${response.status})`, { status: response.status, details: payload.details, kind: 'http' });
+    }
+    return await response.blob();
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new NetworkError(signal?.aborted ? 'Request canceled.' : controller.signal.aborted ? 'Request timed out.' : 'Could not reach the FestOS API.', { kind: signal?.aborted ? 'aborted' : controller.signal.aborted ? 'timeout' : 'network' });
+  } finally {
+    clearTimeout(timer); signal?.removeEventListener('abort', abort);
   }
-  return response.blob();
 }

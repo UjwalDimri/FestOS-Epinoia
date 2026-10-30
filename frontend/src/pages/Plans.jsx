@@ -1,107 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { api, apiFile } from '../api.js';
+import { DEMO_MODE } from '../api.js';
+import { accommodationService, exportService, scheduleService } from '../services/index.js';
+import { ConfirmDialog, EmptyState, ErrorState, LoadingState, Toast } from '../components/Shared.jsx';
 
-export default function Plans({ user }) {
-  const [compare, setCompare] = useState(null);
-  const [active, setActive] = useState(null);
-  const [sched, setSched] = useState(null);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-  const canAccommodationWrite = ['festival_director', 'hospitality'].includes(user.role);
-  const canScheduleWrite = ['festival_director', 'events_team'].includes(user.role);
-  const canExport = ['festival_director', 'hospitality', 'events_team', 'logistics_head'].includes(user.role);
-  const [slotPage, setSlotPage] = useState(1);
-
-  const load = () => {
-    api('/accommodation/compare').then(setCompare).catch((e) => setErr(e.message));
-    api('/accommodation/active').then((d) => setActive(d.plan)).catch(() => {});
-    api('/schedule/active').then(setSched).catch(() => {});
-  };
-  useEffect(load, []);
-
-  async function build(strategy) {
-    setErr(''); setMsg('');
-    try { const r = await api('/plans/accommodation', { method: 'POST', body: { strategy } }); setMsg(`Draft ${r.planId} created. Activate it to make it live.`); load(); }
-    catch (e) { setErr(e.message); }
-  }
-  async function activate(planId) {
-    const reason = window.prompt('Reason for activating this plan (required):');
-    if (!reason || reason.trim().length < 5) return setErr('A reason of at least 5 characters is required.');
-    try { await api(`/plans/${planId}/activate`, { method: 'POST', body: { reason } }); setMsg(`${planId} is now active.`); load(); }
-    catch (e) { setErr(e.message); }
-  }
-  async function buildSchedule() {
-    try { const r = await api('/plans/schedule', { method: 'POST' }); setMsg(`Schedule draft ${r.planId} created.`); } catch (e) { setErr(e.message); }
-  }
-
-  return (
-    <>
-      {err && <p className="err">{err}</p>}
-      {msg && <p className="ok">{msg}</p>}
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Strategies compared (live, on current data)</h3>
-        {compare && (
-          <table>
-            <thead><tr><th>Strategy</th><th>Placed</th><th>Unplaced</th><th>External ₹</th><th>Splits</th><th>Contingents split</th></tr></thead>
-            <tbody>
-              {Object.entries(compare.strategies).map(([k, v]) => (
-                <tr key={k}>
-                  <td>{k}{v.overBudget ? <span className="err"> · over budget</span> : ''}</td>
-                  <td>{v.placed}</td><td>{v.unplaced}</td><td>{Math.round(v.externalCostINR).toLocaleString('en-IN')}</td><td>{v.splits}</td><td>{v.contingentsSplit}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {canAccommodationWrite && (
-          <div className="row" style={{ marginTop: 8 }}>
-            {['cost_first', 'cohesion_first', 'balanced'].map((s) => <button key={s} className="ghost" onClick={() => build(s)}>Create draft: {s}</button>)}
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Active accommodation plan</h3>
-        {active ? <div>{active.planId} · {active.strategy} · {active.metrics.placed} placed, {active.metrics.unplaced} unplaced</div> : <div className="muted">None active.</div>}
-        {canExport && <div className="row" style={{ marginTop: 8 }}>
-          <a href="/api/export/accommodation.csv" className="ghost" style={{ padding: '4px 8px', border: '1px solid #353a44', borderRadius: 4, color: '#e8e8ea' }} onClick={(e) => { e.preventDefault(); downloadCsv('accommodation'); }}>Export accommodation CSV</a>
-          <a href="/api/export/schedule.csv" className="ghost" onClick={(e) => { e.preventDefault(); downloadCsv('schedule'); }} style={{ padding: '4px 8px', border: '1px solid #353a44', borderRadius: 4, color: '#e8e8ea' }}>Export schedule CSV</a>
-          <a href="/api/export/inventory.csv" className="ghost" onClick={(e) => { e.preventDefault(); downloadCsv('inventory'); }} style={{ padding: '4px 8px', border: '1px solid #353a44', borderRadius: 4, color: '#e8e8ea' }}>Export inventory CSV</a>
-        </div>}
-      </div>
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Schedule</h3>
-        {sched?.plan ? (
-          <>
-            <div>{sched.plan.planId} · {sched.plan.metrics.slots} heats scheduled · {sched.plan.metrics.unscheduledRounds} later rounds waiting for results</div>
-            <div className="muted">Clashes {sched.plan.metrics.participantClashes} · not present {sched.plan.metrics.notPresent} · equipment short {sched.plan.metrics.equipmentShortfall}</div>
-            <table style={{ marginTop: 8 }}>
-              <thead><tr><th>Slot</th><th>Venue</th><th>Start (IST)</th><th>Size</th><th>Flags</th></tr></thead>
-              <tbody>
-                {sched.slots.slice((slotPage - 1) * 40, slotPage * 40).map((s) => (
-                  <tr key={s.slotId}>
-                    <td>{s.slotId}</td>
-                    <td>{sched.venues.find((v) => v.venueId === s.venueId)?.name || s.venueId}</td>
-                    <td>{new Date(new Date(s.start).getTime() + 19800000).toISOString().slice(0, 16).replace('T', ' ')}</td>
-                    <td>{s.expectedSize}</td>
-                    <td className="muted">{(s.reasonCodes || []).join(', ')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="row"><span className="muted">Showing {Math.min(40, Math.max(0, sched.slots.length - (slotPage - 1) * 40))} of {sched.slots.length} slots</span><button className="ghost" disabled={slotPage<=1} onClick={()=>setSlotPage(slotPage-1)}>Previous</button><button className="ghost" disabled={slotPage*40>=sched.slots.length} onClick={()=>setSlotPage(slotPage+1)}>Next</button></div>
-          </>
-        ) : <div className="muted">No active schedule.</div>}
-        {sched?.plan && <p className="muted">Active schedule · {sched.plan.planId}. Slot flags and reason codes above are backend-reported.</p>}
-        {canScheduleWrite && <button className="ghost" style={{ marginTop: 8 }} onClick={buildSchedule}>Create schedule draft</button>}
-      </div>
-    </>
-  );
-
-  async function downloadCsv(kind) {
-    try { const b = await apiFile(`/export/${kind}.csv`); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `festos-${kind}.csv`; a.click(); URL.revokeObjectURL(u); }
-    catch (e) { setErr(e.message); }
-  }
+const fmt=(n)=>n==null?'Unavailable':Number(n).toLocaleString('en-IN');
+export default function Plans({user}){
+ const [compare,setCompare]=useState(null),[active,setActive]=useState(undefined),[sched,setSched]=useState(null),[rooms,setRooms]=useState(null),[unplaced,setUnplaced]=useState(null),[draft,setDraft]=useState(null),[scheduleDraft,setScheduleDraft]=useState(null);
+ const [errors,setErrors]=useState({}),[loading,setLoading]=useState(true),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[activation,setActivation]=useState(null),[reason,setReason]=useState(''),[page,setPage]=useState(1);
+ const canAccommodation=['festival_director','hospitality'].includes(user.role),canSchedule=['festival_director','events_team'].includes(user.role),canExport=['festival_director','hospitality','events_team','logistics_head'].includes(user.role);
+ async function load(){setLoading(true);setErrors({});const out=await Promise.allSettled([accommodationService.compare(),accommodationService.active(),scheduleService.active(),accommodationService.rooms(),accommodationService.unplaced()]);['compare','active','schedule','rooms','unplaced'].forEach((key,i)=>{const x=out[i];if(x.status==='fulfilled'){if(key==='compare')setCompare(x.value);if(key==='active')setActive(x.value.plan);if(key==='schedule')setSched(x.value);if(key==='rooms')setRooms(x.value.rooms||[]);if(key==='unplaced')setUnplaced(x.value.rows||[]);}else setErrors(v=>({...v,[key]:x.reason.message}));});setLoading(false);}
+ useEffect(()=>{load();},[]);
+ async function build(strategy){setBusy(true);setErrors({});setMessage('');try{const result=await accommodationService.build(strategy);setDraft(result);setMessage(`Backend created draft ${result.planId}. It is not active.`);}catch(e){setErrors(v=>({...v,build:e.message}));}finally{setBusy(false);}}
+ async function buildSchedule(){setBusy(true);setErrors({});try{const result=await scheduleService.build();setScheduleDraft(result);setMessage(`Backend created schedule draft ${result.planId}. The active schedule was not changed.`);}catch(e){setErrors(v=>({...v,buildSchedule:e.message}));}finally{setBusy(false);}}
+ async function activate(){if(reason.trim().length<5){setErrors(v=>({...v,activate:'A reason with at least 5 characters is required.'}));return;}setBusy(true);setErrors({});try{const result=await accommodationService.activate(activation.planId,reason.trim());setMessage(DEMO_MODE?'Demo activation recorded; nothing was persisted.':`Backend activated ${activation.planId}.`);setActivation(null);setReason('');setDraft(null);if(DEMO_MODE)setActive({planId:result.planId,strategy:activation.strategy,status:'active',metrics:activation.metrics});else await load();}catch(e){setErrors(v=>({...v,activate:e.message}));}finally{setBusy(false);}}
+ async function download(kind){try{const blob=await exportService.downloadCsv(kind),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`festos-${kind}.csv`;a.click();URL.revokeObjectURL(url);}catch(e){setErrors(v=>({...v,export:e.message}));}}
+ const slots=sched?.slots||[],pageCount=Math.max(1,Math.ceil(slots.length/40));
+ return <>
+  <Toast message={message}/>{['build','buildSchedule','export'].filter(key=>errors[key]).map(key=><ErrorState key={key} error={errors[key]}/>)}
+  <section className="card"><h2>Accommodation strategies</h2>{loading&&!compare?<LoadingState/>:compare?<><p className="muted">Live comparison from current backend data. Creating a draft does not activate it.</p><table><thead><tr><th>Strategy</th><th>Placed</th><th>Unplaced</th><th>External ₹</th><th>Splits</th><th>Contingents split</th><th>Budget</th></tr></thead><tbody>{Object.entries(compare.strategies||{}).map(([name,m])=><tr key={name}><td>{name}</td><td>{m.placed??'Unavailable'}</td><td>{m.unplaced??'Unavailable'}</td><td>{fmt(m.externalCostINR)}</td><td>{m.splits??'Unavailable'}</td><td>{m.contingentsSplit??'Unavailable'}</td><td>{m.overBudget==null?'Unavailable':m.overBudget?'Over budget':'Within budget'}</td></tr>)}</tbody></table><p className="muted">{compare.note}</p>{canAccommodation&&<div className="row">{['cost_first','cohesion_first','balanced'].map(s=><button key={s} className="ghost" disabled={busy} onClick={()=>build(s)}>Create draft: {s}</button>)}</div>}</>:<EmptyState>Comparison unavailable.</EmptyState>}
+   {draft&&<div className="warning"><b>Draft {draft.planId}</b> · not active · placed {draft.metrics?.placed??'Unavailable'} · unplaced {draft.metrics?.unplaced??'Unavailable'}<MetricDetails metrics={draft.metrics}/>{canAccommodation&&<button className="ghost" onClick={()=>{setActivation(draft);setReason('');}}>Activate this draft</button>}</div>}
+  </section>
+  <section className="card"><h2>Accommodation plan status</h2>{errors.active?<ErrorState error={errors.active} retry={load}/>:loading&&active===undefined?<LoadingState/>:active?<><p><b>Active</b> · {active.planId} · {active.strategy} · placed {active.metrics?.placed??'Unavailable'} · unplaced {active.metrics?.unplaced??'Unavailable'}</p></>:<EmptyState>No active accommodation plan.</EmptyState>}{canExport&&<div className="row"><button className="ghost" onClick={()=>download('accommodation')}>Export accommodation CSV</button><button className="ghost" onClick={()=>download('schedule')}>Export schedule CSV</button><button className="ghost" onClick={()=>download('inventory')}>Export inventory CSV</button></div>}</section>
+  <section className="card"><h2>Accommodation details</h2>{errors.rooms?<ErrorState error={errors.rooms} retry={load}/>:loading&&!rooms?<LoadingState/>:rooms?.length?<DynamicTable rows={rooms}/>:<EmptyState>No rooms returned by the backend.</EmptyState>}<h3>Unplaced people on the active plan</h3>{errors.unplaced?<ErrorState error={errors.unplaced} retry={load}/>:loading&&!unplaced?<LoadingState/>:unplaced?.length?<DynamicTable rows={unplaced}/>:<EmptyState>No unplaced rows returned.</EmptyState>}</section>
+  <section className="card"><h2>Active schedule (read-only)</h2>{errors.schedule?<ErrorState error={errors.schedule} retry={load}/>:loading&&!sched?<LoadingState/>:sched?.plan?<><p><b>Active</b> · {sched.plan.planId}</p><p className="muted">Backend-reported metrics and violations:</p><MetricDetails metrics={sched.plan.metrics}/><div className="table-scroll"><table><thead><tr><th>Slot</th><th>Venue</th><th>Start (IST)</th><th>Expected size</th><th>Backend reason codes / violations</th></tr></thead><tbody>{slots.slice((page-1)*40,page*40).map(s=><tr key={s.slotId}><td>{s.slotId}</td><td>{sched.venues?.find(v=>v.venueId===s.venueId)?.name||s.venueId}</td><td>{s.start?new Date(new Date(s.start).getTime()+19800000).toISOString().slice(0,16).replace('T',' '):'Unavailable'}</td><td>{s.expectedSize??'Unavailable'}</td><td>{s.reasonCodes?.length?s.reasonCodes.join(', '):'None reported'}</td></tr>)}</tbody></table></div><div className="row"><span className="muted">Showing {Math.min(40,Math.max(0,slots.length-(page-1)*40))} of {slots.length} slots · page {page} of {pageCount}</span><button className="ghost" disabled={page<=1} onClick={()=>setPage(page-1)}>Previous</button><button className="ghost" disabled={page>=pageCount} onClick={()=>setPage(page+1)}>Next</button></div></>:<EmptyState>No active schedule.</EmptyState>}{canSchedule&&<button className="ghost" disabled={busy} onClick={buildSchedule}>Create schedule draft</button>}{scheduleDraft&&<div className="warning">Schedule draft {scheduleDraft.planId} created. It is not active.<MetricDetails metrics={scheduleDraft.metrics}/></div>}</section>
+  <section className="card"><h2>Events and venues · read-only</h2><p className="muted">Derived only from the active `/schedule/active` response. Create/edit is proposed and not available in the backend.</p>{errors.schedule?<ErrorState error={errors.schedule} retry={load}/>:sched?.plan?<><h3>Events represented in slots</h3><DynamicTable rows={Object.values(slots.reduce((group,s)=>{const k=s.eventId||'Unknown event';group[k]??={eventId:k,slots:0,venues:new Set()};group[k].slots++;group[k].venues.add(s.venueId);return group;},{})).map(x=>({...x,venues:[...x.venues].join(', ')}))}/><h3>Venues in active schedule</h3><DynamicTable rows={sched.venues||[]}/></>:<EmptyState>No active schedule data to display.</EmptyState>}</section>
+  <ConfirmDialog open={Boolean(activation)} title="Activate accommodation plan" busy={busy} confirmLabel="Activate plan" onCancel={()=>setActivation(null)} onConfirm={activate}><p>Plan {activation?.planId} will be submitted for activation. The backend enforces plan validity and permissions.</p><label className="form-field">Reason (required, at least 5 characters)<textarea value={reason} onChange={e=>setReason(e.target.value)} minLength={5}/></label>{errors.activate&&<p className="err" role="alert">{errors.activate}</p>}</ConfirmDialog>
+ </>;
 }
+
+function DynamicTable({rows}){if(!rows?.length)return <p className="muted">No rows returned.</p>;const keys=[...new Set(rows.flatMap(r=>Object.keys(r||{})))].filter(k=>!['_id','__v'].includes(k)).slice(0,10);return <div className="table-scroll"><table><thead><tr>{keys.map(k=><th key={k}>{k.replace(/([A-Z])/g,' $1')}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={r.id||r._id||r.slotId||i}>{keys.map(k=><td key={k}>{r[k]&&typeof r[k]==='object'?JSON.stringify(r[k]):String(r[k]??'Unavailable')}</td>)}</tr>)}</tbody></table></div>;}
+function MetricDetails({metrics}){if(!metrics||!Object.keys(metrics).length)return <p className="muted">No additional metrics returned.</p>;return <dl className="metrics-list">{Object.entries(metrics).map(([k,v])=><div key={k}><dt>{k.replace(/([A-Z])/g,' $1')}</dt><dd>{v==null?'Unavailable':typeof v==='object'?JSON.stringify(v):String(v)}</dd></div>)}</dl>;}

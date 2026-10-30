@@ -15,7 +15,7 @@ Paths are relative to `VITE_API_BASE_URL` (default `/api`), with Bearer authenti
 | GET `/participants/:id` | — | `{person,allocation,registrations,merch,duplicateCandidates}` | `participants:read` | yes / real |
 | POST `/participants/:id/reveal` | `{field,reason}` | `{participantId,field,value}` | field/role checked | yes / real |
 | POST `/participants/:id/housing` | housing fields and reason | audited command result | `participants:write` | yes / real |
-| GET `/data/issues` | no supported query filters | `{issues:[...]}` (up to 500) | `dataquality:read` | yes / real or explicit fixture |
+| GET `/data/issues` | `severity`, `status` | `{issues:[...]}` (up to 500; default status `open`) | `dataquality:read` | yes / real or explicit fixture |
 | GET `/data/headcount` | — | headcount values and `{ladder:[...]}` | `dataquality:read` | yes / real or explicit fixture |
 | GET `/data/duplicates` | — | `{candidates:[...]}` (up to 200 open) | `dataquality:read` | yes / real or explicit fixture |
 | POST `/data/duplicates/:id/dismiss` | `{reason}` | audited command result | `dataquality:write` | yes / real |

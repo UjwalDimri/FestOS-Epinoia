@@ -1,0 +1,20 @@
+import React from 'react';
+import {fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+let loginRole='festival_director';
+vi.mock('../src/api.js',()=>({api:vi.fn(),getToken:()=>null,setToken:vi.fn(),setUnauthorizedHandler:vi.fn(),DEMO_MODE:false}));
+vi.mock('../src/pages/Login.jsx',()=>({default:({onLogin})=><button onClick={()=>onLogin({name:'Test User',role:loginRole,roleLabel:'Test',permissions:[]})}>test login</button>}));
+vi.mock('../src/pages/Dashboard.jsx',()=>({default:()=> <div>dashboard-page</div>}));
+vi.mock('../src/pages/Participants.jsx',()=>({default:()=> <div>participants-page</div>}));
+vi.mock('../src/pages/Plans.jsx',()=>({default:()=> <div>plans-page</div>}));
+vi.mock('../src/pages/Disruptions.jsx',()=>({default:()=> <div>disruptions-page</div>}));
+vi.mock('../src/pages/DataQuality.jsx',()=>({default:()=> <div>data-page</div>}));
+vi.mock('../src/pages/Audit.jsx',()=>({default:()=> <div>audit-page</div>}));
+vi.mock('../src/pages/Logistics.jsx',()=>({default:()=> <div>logistics-page</div>}));
+import App from '../src/App.jsx';
+describe('hash routing and protected pages',()=>{
+ beforeEach(()=>{loginRole='festival_director';location.hash='';});
+ it('shows the unknown-route fallback',async()=>{location.hash='#not-a-page';render(<App/>);fireEvent.click(screen.getByText('test login'));expect(await screen.findByText('Page not found.')).toBeTruthy();});
+ it('hides pages from volunteers and rejects a direct protected hash',async()=>{loginRole='volunteer';location.hash='#dashboard';render(<App/>);fireEvent.click(screen.getByText('test login'));await screen.findByText('dashboard-page');expect(screen.queryByRole('button',{name:'Audit'})).toBeNull();location.hash='#audit';fireEvent(window,new HashChangeEvent('hashchange'));await waitFor(()=>expect(screen.getByText('Your role cannot access this page.')).toBeTruthy());});
+ it('supports sign-out from an authenticated page',async()=>{render(<App/>);fireEvent.click(screen.getByText('test login'));await screen.findByText('dashboard-page');fireEvent.click(screen.getByText('Sign out'));expect(await screen.findByText('test login')).toBeTruthy();});
+});
