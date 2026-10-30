@@ -1,11 +1,10 @@
-import express from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
 import { api } from './routes/api.js';
 import { HttpError } from './utils/errors.js';
 import { clerkMiddleware } from '@clerk/express';
 
-export function createApp() {
+export function createApp(express) {
   const app = express();
   app.use(cors({ origin: env.clientOrigin, credentials: false }));
   app.use(express.json({ limit: '1mb' }));
