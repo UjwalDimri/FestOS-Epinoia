@@ -25,20 +25,20 @@ export const ROLE_FROM_CSV = {
 const READ_ALL = [
   'participants:read', 'contingents:read', 'dataquality:read', 'accommodation:read', 'schedule:read',
   'inventory:read', 'merch:read', 'vendors:read', 'alerts:read', 'alerts:ack', 'constraints:read',
-  'assumptions:read', 'dashboard:read', 'disruptions:read', 'disruptions:preview', 'staff:read',
+  'assumptions:read', 'dashboard:read', 'disruptions:read', 'disruptions:preview', 'staff:read', 'staff:attendance',
 ];
 
 export const PERMISSIONS = {
   festival_director: ['*'],
   hospitality: [...READ_ALL, 'participants:write', 'participants:reveal', 'accommodation:write',
-    'override:medium', 'exports:read', 'disruptions:commit'],
+    'staff:write', 'staff:manage', 'override:medium', 'exports:read', 'disruptions:commit'],
   registration_desk: [...READ_ALL, 'participants:write', 'participants:reveal', 'contingents:write', 'dataquality:write',
-    'override:medium', 'disruptions:commit'],
-  events_team: [...READ_ALL, 'schedule:write', 'override:medium', 'exports:read', 'disruptions:commit'],
-  logistics_head: [...READ_ALL, 'inventory:write', 'override:medium', 'exports:read', 'disruptions:commit'],
-  merchandise_desk: [...READ_ALL, 'merch:issue', 'merch:replace', 'override:medium', 'disruptions:commit'],
-  food_coordinator: [...READ_ALL, 'vendors:write', 'override:medium', 'disruptions:commit'],
-  volunteer: ['participants:read', 'alerts:read', 'dashboard:read', 'participants:checkin'],
+    'staff:write', 'staff:manage', 'override:medium', 'disruptions:commit'],
+  events_team: [...READ_ALL, 'schedule:write', 'staff:write', 'staff:manage', 'override:medium', 'exports:read', 'disruptions:commit'],
+  logistics_head: [...READ_ALL, 'inventory:write', 'staff:write', 'staff:manage', 'override:medium', 'exports:read', 'disruptions:commit'],
+  merchandise_desk: [...READ_ALL, 'merch:issue', 'merch:replace', 'staff:write', 'staff:manage', 'override:medium', 'disruptions:commit'],
+  food_coordinator: [...READ_ALL, 'vendors:write', 'staff:write', 'staff:manage', 'override:medium', 'disruptions:commit'],
+  volunteer: ['participants:read', 'alerts:read', 'dashboard:read', 'participants:checkin', 'staff:read', 'staff:attendance'],
 };
 
 export function can(role, permission) {

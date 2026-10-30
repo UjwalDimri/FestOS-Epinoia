@@ -10,9 +10,10 @@ import Plans from './pages/Plans.jsx';
 import DataQuality from './pages/DataQuality.jsx';
 import Audit from './pages/Audit.jsx';
 import Logistics from './pages/Logistics.jsx';
+import Staff from './pages/Staff.jsx';
 const PAGES = [
  ['dashboard','Control tower',Dashboard], ['participants','People',Participants], ['plans','Accommodation & schedule',Plans],
- ['disruptions','Disruptions',Disruptions], ['data','Data quality',DataQuality], ['audit','Audit',Audit], ['logistics','Logistics',Logistics],
+ ['disruptions','Disruptions',Disruptions], ['data','Data quality',DataQuality], ['audit','Audit',Audit], ['logistics','Logistics',Logistics], ['staff','Staff & volunteers',Staff],
 ];
 export default function App() {
  const [user,setUser]=useState(null); const [page,setPage]=useState(location.hash.slice(1)||'dashboard');

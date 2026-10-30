@@ -104,7 +104,9 @@ export function parseWindows(text) {
 }
 
 export function normalizeStaff(row) {
-  return { memberId: row.member_id, name: row.name, roleLabel: row.role, role: ROLE_FROM_CSV[row.role] || 'volunteer', shift: row.shift, phone: row.phone };
+  const role = ROLE_FROM_CSV[row.role] || 'volunteer';
+  const department = ({ festival_director: 'leadership', registration_desk: 'registration', hospitality: 'hospitality', events_team: 'events', logistics_head: 'logistics', merchandise_desk: 'merchandise', food_coordinator: 'food', volunteer: 'volunteer' })[role];
+  return { memberId: row.member_id, name: row.name, roleLabel: row.role, role, department, shift: row.shift, phone: row.phone, status: 'active' };
 }
 
 export function stateFromCondition(condition, location) {
