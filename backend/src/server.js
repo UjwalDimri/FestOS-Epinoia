@@ -6,10 +6,12 @@ import { loadConstraintSettings } from './constraints/index.js';
 import { migrateTeam1SchemaFields } from './services/schemaMigrations.js';
 import * as M from './models/index.js';
 import { migrateLegacyStockLocations } from './services/logisticsMigrations.js';
+import { migrateEventVenueModule } from './services/eventsMigrations.js';
 
 await connectDb(env.mongoUri);
 await migrateTeam1SchemaFields();
 await migrateLegacyStockLocations();
+await migrateEventVenueModule();
 await ensureAssumptions();
 const people = await M.User.countDocuments({});
 if (!people) console.warn('[server] No data yet. Run: npm run seed');

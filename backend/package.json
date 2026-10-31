@@ -10,7 +10,7 @@
     "seed": "node scripts/seed.js",
     "reset:demo": "node scripts/seed.js",
     "init:replica": "node scripts/initReplica.js",
-    "test": "node --test tests/engines.test.js"
+    "test": "node tests/engines.test.js"
   },
   "engines": {
     "node": ">=20"

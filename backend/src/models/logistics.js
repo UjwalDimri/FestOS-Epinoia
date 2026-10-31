@@ -5,7 +5,7 @@ const inventoryLineSchema = new Schema({
   itemId: { type: String, required: true, unique: true },
   item: String,
   itemName: String,
-  sku: { type: String, trim: true, uppercase: true, sparse: true },
+  sku: { type: String, trim: true, uppercase: true },
   description: String, categoryId: { type: String, index: true }, subcategory: String,
   brand: String, model: String, imageRef: String,
   itemType: { type: String, enum: ['asset','consumable','rental','equipment','furniture','electronic','other'], default: 'equipment' },
