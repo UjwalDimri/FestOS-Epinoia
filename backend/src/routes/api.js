@@ -27,6 +27,7 @@ import { accommodationApi } from '../modules/accommodation/accommodation.routes.
 import { logisticsApi } from '../modules/logistics/logistics.routes.js';
 import { staffApi } from '../modules/staff/staff.routes.js';
 import { eventsVenuesSchedulingApi } from '../modules/events/eventsVenuesScheduling.routes.js';
+import { fineCasesApi } from '../modules/compliance/fineCases.routes.js';
 
 export const api = express.Router();
 
@@ -52,6 +53,7 @@ api.use(authenticate);
 api.use(accommodationApi);
 api.use(logisticsApi);
 api.use(eventsVenuesSchedulingApi);
+api.use(fineCasesApi);
 api.use(participantContingent);
 api.use(staffApi);
 
@@ -65,11 +67,12 @@ api.post('/explain', ah(async (req, res) => {
 
 // ---------- dashboard / alerts
 api.get('/dashboard', ah(async (req, res) => {
-  const [alerts, people, plan, sp, merch, vendors] = await Promise.all([
+  const [allAlerts, people, plan, sp, merch, vendors] = await Promise.all([
     computeAlerts(), M.Participant.countDocuments({}), activePlan('accommodation'), activePlan('schedule'),
     merchForecast(), M.Vendor.find({}).lean(),
   ]);
   const state = await loadState();
+  const alerts = allAlerts.filter((alert) => alert.ruleId !== 'FINE_CASE_REVIEW' || req.user.role === 'festival_director');
   res.json({
     counts: { people, contingents: state.contingents.length, events: state.events.length, venues: state.venues.length, vendors: vendors.length,
       dataIssuesOpen: await M.DataIssue.countDocuments({ status: 'open' }), duplicatesOpen: await M.DuplicateCandidate.countDocuments({ status: 'open' }) },
@@ -80,7 +83,10 @@ api.get('/dashboard', ah(async (req, res) => {
   });
 }));
 
-api.get('/alerts', ah(async (req, res) => res.json({ alerts: await computeAlerts() })));
+api.get('/alerts', ah(async (req, res) => {
+  const alerts = await computeAlerts();
+  res.json({ alerts: alerts.filter((alert) => alert.ruleId !== 'FINE_CASE_REVIEW' || req.user.role === 'festival_director') });
+}));
 api.post('/alerts/:key/ack', requirePerm('alerts:ack'), ah(async (req, res) => {
   const a = await M.Alert.findOneAndUpdate({ key: req.params.key }, { status: 'acknowledged', acknowledgedBy: req.user.email, acknowledgedAt: new Date() }, { new: true }).lean();
   if (!a) throw notFound('No such alert');

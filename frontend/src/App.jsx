@@ -19,6 +19,7 @@ import Events from './pages/Events.jsx';
 import Venues from './pages/Venues.jsx';
 import Scheduling from './pages/Scheduling.jsx';
 import PulseMap from './pages/PulseMap.jsx';
+import FineCases from './pages/FineCases.jsx';
 
 const PAGES = [
  ['dashboard','Control tower',Dashboard,'/dashboard','dashboard','Overview'],
@@ -36,6 +37,7 @@ const PAGES = [
  ['venues','Venues',Venues,'/venues','building','Operations'],
  ['disruptions','Disruptions',Disruptions,'/disruptions','alert','Operations'],
  ['staff','Staff & volunteers',Staff,'/staff','users','Administration'],
+ ['fineCases','Rule reports',FineCases,'/rule-reports','alert','Administration'],
 ];
 const PATH_BY_KEY=Object.fromEntries(PAGES.map(([key,,,path])=>[key,path]));
 function pageFromLocation(){return PAGES.find(([, , ,path])=>path===window.location.pathname)?.[0]||PAGES.find(([key])=>key===window.location.hash.slice(1))?.[0]||'dashboard';}
@@ -55,6 +57,7 @@ const DESCRIPTIONS={
  venues:'Manage campus spaces, facilities, availability and bookings.',
  disruptions:'Preview operational impact before an authorized change is committed.',
  staff:'Manage festival staff, volunteers, assignments, and operational availability.',
+ fineCases:'Record a suspected accommodation-rule breach and route any proposed fine to the Festival Director for review.',
 };
 
 export default function App(){

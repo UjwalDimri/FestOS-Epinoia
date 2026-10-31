@@ -74,6 +74,12 @@ export async function computeAlerts(now = new Date()) {
   if (dupes) add({ key: 'DATA_DUPLICATES', ruleId: 'DATA_DUPLICATES', severity: 'medium', ownerRole: 'registration_desk',
     title: `${dupes} possible duplicate records await a human decision`, affectedCount: dupes, suggestedAction: 'Review merge candidates side by side.' });
 
+  // A fine report is only a suspected violation until the Festival Director reviews it.
+  const fineCases = await M.FineCase.find({ status: 'pending_review' }).sort({ createdAt: 1 }).lean();
+  for (const fineCase of fineCases) add({ key: `FINE_CASE_${fineCase.caseId}`, ruleId: 'FINE_CASE_REVIEW', severity: 'medium', ownerRole: 'festival_director',
+    title: `Rule report ${fineCase.caseId} needs review`, detail: `${fineCase.ruleTitle} · ${fineCase.targetType}: ${fineCase.participantName || fineCase.contingentName || fineCase.contingentId} · proposed ₹${fineCase.proposedFine}`,
+    affectedCount: 1, entityRefs: [fineCase.caseId, fineCase.contingentId, ...(fineCase.participantId ? [fineCase.participantId] : [])], suggestedAction: 'Review the observation and evidence in Rules & fines. This report is not an imposed fine.' });
+
   // Merch
   const merch = await M.MerchStock.find({}).lean();
   for (const s of merch) {
