@@ -6,3 +6,6 @@ dist/
 backend/mdb/
 backend/mdb-run/
 /mdb/
+
+backend/mongodb/
+backend/mongodb*.zip

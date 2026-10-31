@@ -116,6 +116,7 @@ const slotSchema = new Schema({
   teardownMinutes: Number,
   expectedSize: Number,
   participantIds: [String],
+  teamIds: [String],
   participantsKnown: Boolean,
   judgeIds: [String],
   volunteersNeeded: Number,

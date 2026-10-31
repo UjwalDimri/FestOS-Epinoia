@@ -21,6 +21,7 @@ import Logistics from './pages/Logistics.jsx';
 import Staff from './pages/Staff.jsx';
 import Merchandise from './pages/Merchandise.jsx';
 import Vendors from './pages/Vendors.jsx';
+import Staff from './pages/Staff.jsx';
 import AccommodationOps from './pages/AccommodationOps.jsx';
 import Events from './pages/Events.jsx';
 import Venues from './pages/Venues.jsx';
