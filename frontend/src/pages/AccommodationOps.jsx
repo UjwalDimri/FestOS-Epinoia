@@ -87,11 +87,10 @@ export default function AccommodationOps({ user }) {
   return <div className="module-page">
     <section className="module-hero accommodation-hero">
       <div><span className="eyebrow">STAYS · CHECK-IN · CAPACITY</span><h2>Accommodation desk</h2><p>Coordinate beds, arrivals, and room readiness from one operational view.</p></div>
-      <div className="hero-actions"><StatusBadge tone="success">Live backend data</StatusBadge>{canWrite && <button className="button-light" onClick={runPreview} disabled={busy}>Preview allocation</button>}</div>
-      <div className="hero-orbit" aria-hidden="true"><i/><i/><i/></div>
+      <div className="hero-actions"><StatusBadge tone={error?'warning':loading?'info':'success'}>{error?'Some data unavailable':loading?'Loading data…':'Data loaded'}</StatusBadge>{canWrite && <button className="button-light" onClick={runPreview} disabled={busy}>Preview allocation</button>}</div>
     </section>
     {message && <p className="toast motion-in" role="status">{message}</p>}{error && <ErrorState error={error} retry={load}/>}
-    <nav className="module-tabs" aria-label="Accommodation sections">{TABS.map((item) => <button key={item} className={tab === item ? 'selected' : ''} onClick={() => setTab(item)}>{item}</button>)}</nav>
+    <nav className="module-tabs" aria-label="Accommodation sections">{TABS.map((item) => <button type="button" key={item} className={tab === item ? 'selected' : ''} aria-pressed={tab === item} onClick={() => setTab(item)}>{item}</button>)}</nav>
     {loading && !data.dashboard ? <LoadingState/> : <div className="module-content" key={tab}>
       {tab === 'Overview' && <>
         <section className="metric-strip">{[['Demand', kpis.demand], ['Allocated', kpis.allocated], ['Awaiting arrival', kpis.pendingCheckIn], ['Checked in', kpis.checkedIn], ['Usable beds', kpis.usableBeds], ['Rooms to ready', kpis.roomsRequiringCleaning]].map(([name, value], i) => <article className="metric-tile" style={{ '--delay': `${i * 55}ms` }} key={name}><span>{name}</span><strong>{value ?? '—'}</strong><small>{name === 'Demand' ? 'accommodation requested' : name === 'Usable beds' ? `${kpis.physicalBeds ?? '—'} physical total` : 'current count'}</small></article>)}</section>

@@ -5,7 +5,6 @@ import * as mocks from '../mocks/index.js';
 const call = (key, path, options) => DEMO_MODE ? Promise.resolve(mocks[key]()) : api(path, options);
 const write = (path, options, fixture) => DEMO_MODE ? Promise.resolve(typeof fixture === 'function' ? fixture() : fixture) : api(path, options);
 export const dashboardService = { dashboard: () => call('dashboard', '/dashboard'), alerts: () => call('alerts', '/alerts'), acknowledge: (key) => write(`/alerts/${encodeURIComponent(key)}/ack`, { method: 'POST' }, () => mocks.acknowledge(key)) };
-export const staffService = { roster: () => call('staff', '/staff') };
 export const participantsService = { list: (query = '', signal) => call('participants', `/participants${query}`, { signal }), detail: (id, signal) => call('participantDetail', `/participants/${encodeURIComponent(id)}`, { signal }), reveal: (id, field, reason) => write(`/participants/${encodeURIComponent(id)}/reveal`, { method: 'POST', body: { field, reason } }, () => mocks.reveal(id, field)) };
 export const scheduleService = { active: () => call('schedule', '/schedule/active'), build: () => write('/plans/schedule', { method: 'POST' }, mocks.scheduleDraft) };
 export const accommodationService = { compare: () => call('compare', '/accommodation/compare'), active: () => call('accommodation', '/accommodation/active'), rooms: () => call('rooms', '/rooms'), unplaced: () => call('unplaced', '/accommodation/unplaced'), build: (strategy) => write('/plans/accommodation', { method: 'POST', body: { strategy } }, () => mocks.accommodationDraft(strategy)), activate: (planId, reason) => write(`/plans/${encodeURIComponent(planId)}/activate`, { method: 'POST', body: { reason } }, () => mocks.accommodationActivation(planId)) };
@@ -24,6 +23,7 @@ export const staffService = {
  createAvailability: (body) => write('/staff/availability', { method: 'POST', body }, () => mocks.savedStaffAvailability(body)),
  checkIn: (shiftId) => write('/staff/attendance/check-in', { method: 'POST', body: { shiftId } }, () => mocks.staffAttendanceAction(shiftId, 'check-in')),
  checkOut: (shiftId) => write('/staff/attendance/check-out', { method: 'POST', body: { shiftId } }, () => mocks.staffAttendanceAction(shiftId, 'check-out')),
+};
 export const vendorsService = {
  list: () => call('vendors', '/vendors'),
  detail: (id) => call('vendorDetail', `/vendors/${encodeURIComponent(id)}`),

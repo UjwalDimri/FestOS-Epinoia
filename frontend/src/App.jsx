@@ -18,7 +18,6 @@ import AccommodationOps from './pages/AccommodationOps.jsx';
 import Events from './pages/Events.jsx';
 import Venues from './pages/Venues.jsx';
 import Scheduling from './pages/Scheduling.jsx';
-import Staff from './pages/Staff.jsx';
 
 const PAGES = [
  ['dashboard','Control tower',Dashboard,'/dashboard','dashboard','Overview'],

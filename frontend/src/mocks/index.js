@@ -26,7 +26,6 @@ export const rooms = () => ({ rooms: [] });
 export const unplaced = () => ({ rows: [] });
 export const inventory = () => ({ balances: [], lines: [], movements: [] });
 export const merch = () => ({ forecast: [], issuesToday: 0 });
-export const staff = () => ({ staff: [], departments: [], roles: [] });
 export const staffDepartments = () => ({ departments: ['leadership','registration','hospitality','events','logistics','merchandise','food','volunteer'], roles: [] });
 export const staffShifts = () => ({ shifts: [] });
 export const staffAssignments = () => ({ assignments: [] });
