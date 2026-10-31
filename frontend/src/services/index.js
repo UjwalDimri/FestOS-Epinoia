@@ -13,7 +13,7 @@ export const auditService = { list: (limit = 100) => call('audit', `/audit?limit
 export const dataQualityService = { headcount: () => call('headcount', '/data/headcount'), issues: (query = '') => call('issues', `/data/issues${query}`), duplicates: () => call('duplicates', '/data/duplicates'), dismissDuplicate: (id, reason) => write(`/data/duplicates/${encodeURIComponent(id)}/dismiss`, { method: 'POST', body: { reason } }, () => mocks.duplicateDismissed(id)), resolveIssue: (id, accept, reason) => write(`/data/issues/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: { accept, reason } }, () => mocks.issueResolved(id, accept)) };
 export const logisticsService = { inventory: () => call('inventory', '/inventory'), merch: () => call('merch', '/merch'), vendors: () => call('vendors', '/vendors'), coverage: () => call('coverage', '/vendors/coverage') };
 export const staffService = {
- list: () => call('staff', '/staff'), departments: () => call('staffDepartments', '/staff/departments'),
+ list: () => call('staff', '/staff'), roster: () => call('staff', '/staff'), departments: () => call('staffDepartments', '/staff/departments'),
  shifts: () => call('staffShifts', '/staff/shifts'), assignments: () => call('staffAssignments', '/staff/assignments'),
  availability: () => call('staffAvailability', '/staff/availability'), attendance: () => call('staffAttendance', '/staff/attendance'),
  create: (body) => write('/staff', { method: 'POST', body }, () => mocks.savedStaff(body)),

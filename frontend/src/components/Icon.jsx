@@ -8,6 +8,7 @@ const paths = {
  building: <><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h2m4 0h2M8 11h2m4 0h2M8 15h2m4 0h2M10 21v-3h4v3"/></>,
  events: <><path d="M4 20V5l15-2v17"/><circle cx="8" cy="20" r="2"/><circle cx="17" cy="20" r="2"/><path d="M4 9l15-2"/></>,
  schedule: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></>,
+ pulse: <><path d="M3 12h4l2.3-6.5L14 18l2.3-6H21"/><circle cx="3" cy="12" r="1"/><circle cx="21" cy="12" r="1"/></>,
  alert: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></>,
  boxes: <><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5M12 8v5"/></>,
  shirt: <><path d="m8 4 4 2 4-2 5 4-3 4-2-1v10H8V11l-2 1-3-4z"/><path d="M9 4c0 2 1 3 3 3s3-1 3-3"/></>,

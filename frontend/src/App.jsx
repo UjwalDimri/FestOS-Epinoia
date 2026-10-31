@@ -18,12 +18,14 @@ import AccommodationOps from './pages/AccommodationOps.jsx';
 import Events from './pages/Events.jsx';
 import Venues from './pages/Venues.jsx';
 import Scheduling from './pages/Scheduling.jsx';
+import PulseMap from './pages/PulseMap.jsx';
 
 const PAGES = [
  ['dashboard','Control tower',Dashboard,'/dashboard','dashboard','Overview'],
  ['participants','Participants',Participants,'/participants','users','People'],
  ['events','Events',Events,'/events','events','Operations'],
  ['scheduling','Schedule',Scheduling,'/scheduling','schedule','Operations'],
+ ['pulse','Festival pulse',PulseMap,'/pulse-map','pulse','Operations'],
  ['plans','Accommodation plans',Plans,'/accommodation','home','Operations'],
  ['accommodation','Accommodation desk',AccommodationOps,'/accommodation-desk','building','Operations'],
  ['logistics','Logistics',Logistics,'/logistics','boxes','Operations'],
@@ -42,6 +44,7 @@ const DESCRIPTIONS={
  participants:'Search and review participant records with role-aware field visibility.',
  events:'Create proposals, coordinate owners, and track event readiness.',
  scheduling:'Generate and review schedules against current registrations and resources.',
+ pulse:'See live crowd, queue, and venue updates from across the festival.',
  plans:'Review accommodation capacity and schedule plans returned by the operations engine.',
  accommodation:'Manage property capacity, room readiness, arrivals and departures.',
  logistics:'Manage inventory, locations, requests, transfers and purchasing.',
@@ -75,7 +78,7 @@ export default function App(){
 
  return <AppShell user={user} page={page} pages={visiblePages} theme={theme} onToggleTheme={()=>setTheme(theme==='dark'?'light':'dark')} onNavigate={navigate} onSignOut={signOut}>
   <PermissionGate allowed={Boolean(selected)&&roleCanSee(user.role,page)}>
-   {selected?<ErrorBoundary key={page}>{['events','venues','scheduling'].includes(page)?<Page user={user}/>:<><PageHeader title={label} description={DESCRIPTIONS[page]} breadcrumbs={[{label:group},{label}]}/><Page user={user}/></>}</ErrorBoundary>:<ErrorState error="Page not found." retry={()=>navigate('dashboard')}/ >}
+   {selected?<ErrorBoundary key={page}>{['events','venues','scheduling','pulse'].includes(page)?<Page user={user}/>:<><PageHeader title={label} description={DESCRIPTIONS[page]} breadcrumbs={[{label:group},{label}]}/><Page user={user}/></>}</ErrorBoundary>:<ErrorState error="Page not found." retry={()=>navigate('dashboard')}/ >}
   </PermissionGate>
  </AppShell>;
 }

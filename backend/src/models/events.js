@@ -67,6 +67,7 @@ const venueSchema = new Schema({
   campusLocation: String,
   address: String,
   coordinates: { lat: Number, lng: Number },
+  mapPosition: { x: { type: Number, min: 0, max: 100 }, y: { type: Number, min: 0, max: 100 } },
   capacity: { type: Number, min: 0, default: 0 },
   seatingCapacity: { type: Number, min: 0 },
   standingCapacity: { type: Number, min: 0 },
