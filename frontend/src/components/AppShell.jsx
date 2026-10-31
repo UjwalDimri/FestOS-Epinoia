@@ -3,6 +3,7 @@ import Icon from './Icon.jsx';
 import { dashboardService } from '../services/index.js';
 import { api, DEMO_MODE } from '../api.js';
 import { ErrorState, LoadingState } from './Shared.jsx';
+import ColorBendsBackground from './ColorBendsBackground.jsx';
 
 function formatISTDate(value) {
  if (!value) return '';
@@ -74,6 +75,7 @@ export default function AppShell({ user, page, pages, description, theme, onTogg
  const initials=String(user?.name||'F').split(/\s+/).slice(0,2).map((part)=>part[0]).join('').toUpperCase();
 
  return <div className={`app-shell${collapsed?' shell-collapsed':''}`}>
+  <ColorBendsBackground className="app-color-bends" />
   <aside id="primary-navigation" ref={navRef} className={`sidebar${collapsed?' sidebar-collapsed':''}${mobileOpen?' sidebar-open':''}`} aria-label="Application navigation">
    <div className="brand-row"><div className="brand"><span className="brand-mark" aria-hidden="true">F</span><span className="brand-copy"><b>FestOS</b><small>FESTIVAL OPERATIONS</small></span></div><button className="sidebar-collapse" type="button" onClick={toggleCollapse} aria-label={collapsed?'Expand sidebar':'Collapse sidebar'} title={collapsed?'Expand sidebar':'Collapse sidebar'}><Icon name={collapsed?'expand':'collapse'}/></button></div>
    <nav className="side-nav" aria-label="Main navigation">

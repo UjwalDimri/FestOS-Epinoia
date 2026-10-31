@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { api, setToken, DEMO_MODE } from '../api.js';
 import { ROLE_LABELS } from '../services/access.js';
 import { DemoBanner } from '../components/Shared.jsx';
+import ColorBendsBackground from '../components/ColorBendsBackground.jsx';
 
 const DEMO = [
   ['director', 'Festival Director'], ['hospitality', 'Hospitality'], ['registration', 'Registration Desk'],
@@ -34,10 +35,12 @@ export default function Login({ onLogin, sessionError }) {
 
   return (
     <><DemoBanner/><main className="login-screen">
+     <ColorBendsBackground className="login-color-bends" />
+     <div className="login-color-grade" aria-hidden="true"/>
      <svg className="login-ambient" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-       <linearGradient id="ambient-wave" x1="0" x2="1" y1="0" y2=".35"><stop stopColor="#8c9b8d" stopOpacity="0"/><stop offset=".28" stopColor="#c9a18b" stopOpacity=".42"/><stop offset=".65" stopColor="#d7c5b4" stopOpacity=".56"/><stop offset="1" stopColor="#9aa693" stopOpacity="0"/></linearGradient>
-       <radialGradient id="ambient-glow"><stop stopColor="#9d7163" stopOpacity=".2"/><stop offset="1" stopColor="#141311" stopOpacity="0"/></radialGradient>
+       <linearGradient id="ambient-wave" x1="0" x2="1" y1="0" y2=".35"><stop stopColor="#363486" stopOpacity="0"/><stop offset=".28" stopColor="#8e3938" stopOpacity=".35"/><stop offset=".65" stopColor="#d5b878" stopOpacity=".5"/><stop offset="1" stopColor="#343486" stopOpacity="0"/></linearGradient>
+       <radialGradient id="ambient-glow"><stop stopColor="#9a4a3d" stopOpacity=".15"/><stop offset=".55" stopColor="#403d8d" stopOpacity=".08"/><stop offset="1" stopColor="#f7f3e5" stopOpacity="0"/></radialGradient>
        <filter id="ambient-blur"><feGaussianBlur stdDeviation="1.4"/></filter>
       </defs>
       <ellipse className="ambient-glow" cx="750" cy="495" fill="url(#ambient-glow)" rx="660" ry="330"/>
@@ -47,10 +50,10 @@ export default function Login({ onLogin, sessionError }) {
       <g className="ambient-wave wave-front" fill="none" stroke="url(#ambient-wave)" strokeWidth="1.1">
        <path d="M-80 590 C112 580 234 470 397 481 S685 622 878 602 1187 432 1530 452"/><path d="M-80 610 C110 598 247 494 413 501 S690 641 891 620 1197 450 1530 472"/><path d="M-80 630 C121 615 259 516 427 521 S700 658 905 638 1210 468 1530 492"/><path d="M-80 650 C131 631 278 537 445 540 S713 674 923 655 1220 487 1530 513"/>
       </g>
-      <g className="ambient-particles" fill="#dfbba5">
+      <g className="ambient-particles" fill="#8e3938">
        <circle cx="105" cy="627" r="1.4"/><circle cx="175" cy="603" r="1"/><circle cx="243" cy="572" r="1.5"/><circle cx="323" cy="534" r="1"/><circle cx="411" cy="505" r="1.6"/><circle cx="507" cy="516" r="1.1"/><circle cx="595" cy="552" r="1.5"/><circle cx="685" cy="592" r="1"/><circle cx="776" cy="615" r="1.5"/><circle cx="874" cy="599" r="1.1"/><circle cx="970" cy="556" r="1.6"/><circle cx="1060" cy="512" r="1"/><circle cx="1150" cy="475" r="1.4"/><circle cx="1250" cy="457" r="1"/><circle cx="1345" cy="466" r="1.5"/>
       </g>
-      <g className="ambient-particles particles-secondary" fill="#a6b3a3">
+      <g className="ambient-particles particles-secondary" fill="#43418d">
        <circle cx="78" cy="681" r="1"/><circle cx="202" cy="646" r="1.4"/><circle cx="348" cy="587" r="1"/><circle cx="488" cy="564" r="1.2"/><circle cx="631" cy="600" r="1"/><circle cx="823" cy="658" r="1.4"/><circle cx="1012" cy="625" r="1"/><circle cx="1172" cy="554" r="1.3"/><circle cx="1327" cy="512" r="1"/>
       </g>
      </svg>
@@ -60,17 +63,17 @@ export default function Login({ onLogin, sessionError }) {
        <section className="login-story" aria-labelledby="login-story-title">
         <svg className="login-orbit-art" viewBox="0 0 520 300" aria-hidden="true">
          <defs>
-          <radialGradient id="orbit-core-fill" cx="35%" cy="30%" r="70%"><stop stopColor="#f2d9c7" stopOpacity=".88"/><stop offset=".42" stopColor="#c88975" stopOpacity=".48"/><stop offset="1" stopColor="#8b796b" stopOpacity=".04"/></radialGradient>
-          <linearGradient id="orbit-copper" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#ead2bd" stopOpacity=".08"/><stop offset=".48" stopColor="#e7b49b" stopOpacity=".78"/><stop offset="1" stopColor="#bd8b76" stopOpacity=".14"/></linearGradient>
-          <linearGradient id="orbit-sage" x1="1" x2="0" y1="0" y2="1"><stop stopColor="#c5d2bc" stopOpacity=".12"/><stop offset=".5" stopColor="#b1c1ad" stopOpacity=".74"/><stop offset="1" stopColor="#8d9b8b" stopOpacity=".1"/></linearGradient>
+          <radialGradient id="orbit-core-fill" cx="35%" cy="30%" r="70%"><stop stopColor="#fff5c9" stopOpacity=".9"/><stop offset=".42" stopColor="#d6ae6e" stopOpacity=".52"/><stop offset="1" stopColor="#403d8d" stopOpacity=".04"/></radialGradient>
+          <linearGradient id="orbit-copper" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#f4e5bd" stopOpacity=".08"/><stop offset=".48" stopColor="#bd6554" stopOpacity=".8"/><stop offset="1" stopColor="#843535" stopOpacity=".14"/></linearGradient>
+          <linearGradient id="orbit-sage" x1="1" x2="0" y1="0" y2="1"><stop stopColor="#cdd0ef" stopOpacity=".12"/><stop offset=".5" stopColor="#7776c7" stopOpacity=".78"/><stop offset="1" stopColor="#3e3d8d" stopOpacity=".1"/></linearGradient>
          </defs>
          <g transform="translate(365 130)"><g className="orbit-system">
           <circle className="orbit-core" r="53" fill="url(#orbit-core-fill)"/>
           <ellipse className="orbit-ring orbit-ring-copper" rx="130" ry="42" fill="none" stroke="url(#orbit-copper)" strokeWidth="1.2" transform="rotate(-24)"/>
           <ellipse className="orbit-ring orbit-ring-sage" rx="119" ry="53" fill="none" stroke="url(#orbit-sage)" strokeWidth="1" transform="rotate(35)"/>
-          <ellipse className="orbit-ring orbit-ring-fine" rx="150" ry="31" fill="none" stroke="#e6d3c4" strokeOpacity=".26" strokeWidth=".7" transform="rotate(62)"/>
-          <circle className="orbit-spark orbit-spark-one" cx="-103" cy="-20" r="3" fill="#eac2a9"/>
-          <circle className="orbit-spark orbit-spark-two" cx="94" cy="-44" r="2.4" fill="#c4d0bc"/>
+          <ellipse className="orbit-ring orbit-ring-fine" rx="150" ry="31" fill="none" stroke="#fff2c3" strokeOpacity=".32" strokeWidth=".7" transform="rotate(62)"/>
+          <circle className="orbit-spark orbit-spark-one" cx="-103" cy="-20" r="3" fill="#e2b879"/>
+          <circle className="orbit-spark orbit-spark-two" cx="94" cy="-44" r="2.4" fill="#9897df"/>
          </g></g>
         </svg>
         <svg className="login-campus-art" viewBox="0 0 320 240" role="presentation" aria-hidden="true">
@@ -94,9 +97,9 @@ export default function Login({ onLogin, sessionError }) {
         <h1 id="login-story-title">One workspace for the people behind the festival.</h1>
         <p>Coordinate teams, schedules, accommodation, and the work that keeps festival days running.</p>
         <ul className="login-workstreams" aria-label="FestOS work areas">
-         <li><span>01</span><div><b>People</b><small>Registration and participant records</small></div></li>
-         <li><span>02</span><div><b>Operations</b><small>Events, schedules, and accommodation</small></div></li>
-         <li><span>03</span><div><b>Resources</b><small>Logistics, merchandise, and vendors</small></div></li>
+         <li style={{'--i':0}}><span>01</span><div><b>People</b><small>Registration and participant records</small></div></li>
+         <li style={{'--i':1}}><span>02</span><div><b>Operations</b><small>Events, schedules, and accommodation</small></div></li>
+         <li style={{'--i':2}}><span>03</span><div><b>Resources</b><small>Logistics, merchandise, and vendors</small></div></li>
         </ul>
        </section>
        <section className="login-content" aria-labelledby="login-title">
@@ -106,7 +109,7 @@ export default function Login({ onLogin, sessionError }) {
           <label className="form-field">Email<input autoComplete="username" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@festos.test" /></label>
           <label className="form-field">Password<input autoComplete="current-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" /></label>
           {err && <span className="err login-error" role="alert">{err}</span>}
-          <button className="primary login-submit" type="submit" disabled={busy} aria-busy={busy}>{busy?<><span className="button-loader" aria-hidden="true"/>Signing in…</>:'Sign in'}</button>
+          <button className="primary login-submit" type="submit" disabled={busy} aria-busy={busy}>{busy?<><span className="button-loader" aria-hidden="true"/>Signing in…</>:<><span>Sign in</span><i className="btn-sheen" aria-hidden="true"/></>}</button>
           <p className="login-help">Need access? Contact your festival administrator.</p>
         </form>
         {DEMO_MODE && <div className="login-demo"><div><strong>Demo access</strong><span className="muted">Choose a role to fill the demo sign-in.</span></div><div className="demo-roles">{DEMO.map(([k, label]) => <button key={k} type="button" className="ghost" onClick={() => { setEmail(`${k}@festos.test`); setPassword('FestOS@2026'); }}>{label}</button>)}</div></div>}
