@@ -9,6 +9,7 @@ const initialDate = () => '2026-10-31T06:00';
 export default function Staff({ user }) {
   const canManage = ['festival_director','hospitality','registration_desk','events_team','logistics_head','merchandise_desk','food_coordinator'].includes(user?.role);
   const [data, setData] = useState({ staff: [], shifts: [], assignments: [], availability: [], attendance: [], departments: [], roles: [] });
+  const [directoryQuery, setDirectoryQuery] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
   const [profile, setProfile] = useState(emptyProfile()), [editing, setEditing] = useState(false);
   const [shift, setShift] = useState({ memberId: '', startsAt: initialDate(), endsAt: '2026-10-31T14:00', location: '', notes: '' });
@@ -30,6 +31,7 @@ export default function Staff({ user }) {
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  const visibleStaff = data.staff.filter((member) => !directoryQuery.trim() || `${member.memberId} ${member.name} ${member.department} ${member.roleLabel || member.role}`.toLowerCase().includes(directoryQuery.trim().toLowerCase()));
 
   async function submit(operation, success) {
     setBusy(true); setError(''); setMessage('');
@@ -83,8 +85,8 @@ export default function Staff({ user }) {
       </form>
     </section>}
 
-    <section className="card"><div className="row between"><h2>Staff directory</h2><span className="badge">{data.staff.length} profiles</span></div>
-      {loading ? <LoadingState/> : data.staff.length ? <div className="table-scroll"><table><thead><tr><th>Member</th><th>Department</th><th>Role</th><th>Default shift</th><th>Status</th>{canManage && <th>Action</th>}</tr></thead><tbody>{data.staff.map((member) => <tr key={member.memberId}><td><b>{member.name}</b><div className="muted">{member.memberId}{member.email ? ` · ${member.email}` : ''}{member.phone ? ` · ${member.phone}` : ''}</div></td><td>{member.department || '—'}</td><td>{member.roleLabel || member.role}</td><td>{member.shift || '—'}</td><td>{member.status || 'active'}</td>{canManage && <td><button className="ghost" disabled={busy} onClick={() => editStaff(member)}>Edit</button></td>}</tr>)}</tbody></table></div> : <EmptyState>No staff profiles found. Seed the data pack or add a profile.</EmptyState>}
+    <section className="card"><div className="row between"><h2>Staff directory</h2><div className="row"><input aria-label="Search staff directory" type="search" placeholder="Filter staff" value={directoryQuery} onChange={(event) => setDirectoryQuery(event.target.value)}/><span className="badge">{visibleStaff.length} of {data.staff.length} profiles</span></div></div>
+      {loading ? <LoadingState/> : visibleStaff.length ? <div className="table-scroll"><table><thead><tr><th>Member</th><th>Department</th><th>Role</th><th>Default shift</th><th>Status</th>{canManage && <th>Action</th>}</tr></thead><tbody>{visibleStaff.map((member) => <tr key={member.memberId}><td><b>{member.name}</b><div className="muted">{member.memberId}{member.email ? ` · ${member.email}` : ''}{member.phone ? ` · ${member.phone}` : ''}</div></td><td>{member.department || '—'}</td><td>{member.roleLabel || member.role}</td><td>{member.shift || '—'}</td><td>{member.status || 'active'}</td>{canManage && <td><button className="ghost" disabled={busy} onClick={() => editStaff(member)}>Edit</button></td>}</tr>)}</tbody></table></div> : <EmptyState>No staff profiles match this search.</EmptyState>}
     </section>
 
     {canManage && <section className="card"><h2>Schedule a shift</h2><form className="form-grid" onSubmit={saveShift}>

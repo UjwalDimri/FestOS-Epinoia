@@ -4,7 +4,7 @@ import {PageHeader} from '../components/Shared.jsx';
 const empty={name:'',code:'',venueType:'',category:'',building:'',floor:'',roomNumber:'',capacity:0,seatingCapacity:'',standingCapacity:'',accessibleSeatingCapacity:'',indoorOutdoor:'indoor',facilities:'',setupMinutes:15,teardownMinutes:15,managerName:'',managerContact:'',operationalStatus:'available',windowStart:'',windowEnd:'',availableDays:'',notes:''};
 const canWrite=role=>['festival_director','events_team','logistics_head'].includes(role);
 export default function Venues({user}){
- const [summary,setSummary]=useState(null),[rows,setRows]=useState([]),[q,setQ]=useState(''),[editing,setEditing]=useState(null),[selected,setSelected]=useState(null),[error,setError]=useState(''),[status,setStatus]=useState('');
+ const [summary,setSummary]=useState(null),[rows,setRows]=useState([]),[q,setQ]=useState(()=>new URLSearchParams(window.location.search).get('q')||''),[editing,setEditing]=useState(null),[selected,setSelected]=useState(null),[error,setError]=useState(''),[status,setStatus]=useState('');
  async function load(){try{const [s,d]=await Promise.all([api('/venues/summary'),api(`/venues?q=${encodeURIComponent(q)}${status?`&status=${status}`:''}`)]);setSummary(s);setRows(d.rows);setError('');}catch(e){setError(e.message);}}
  useEffect(()=>{load();},[q,status]);
  const writable=canWrite(user?.role);

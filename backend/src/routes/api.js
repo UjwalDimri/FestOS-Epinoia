@@ -61,6 +61,56 @@ api.get('/me', ah(async (req, res) => {
   res.json({ user: { ...req.user, roleLabel: ROLES[req.user.role] }, permissions: ['override:medium', 'participants:reveal'].filter((p) => can(req.user.role, p)) });
 }));
 
+api.get('/search', ah(async (req, res) => {
+  const query = String(req.query.q || '').trim().slice(0, 100);
+  if (query.length < 2) return res.json({ results: [] });
+  const rx = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  const results = [];
+  const add = (type, page, id, title, subtitle) => results.push({ type, page, id, title, subtitle });
+
+  if (can(req.user.role, 'participants:read')) {
+    const rows = await M.Participant.find({ active: { $ne: false }, $or: [
+      { participantId: rx }, { name: rx }, { firstName: rx }, { lastName: rx }, { contingentId: rx }, { college: rx },
+    ] }).select('participantId firstName lastName name contingentId college personType checkInStatus').sort({ participantId: 1 }).limit(5).lean();
+    for (const row of rows) {
+      const masked = maskParticipant(row, req.user.role);
+      add('Participant', 'participants', row.participantId, masked.name || [masked.firstName, masked.lastName].filter(Boolean).join(' ') || row.participantId,
+        `ID ${row.participantId}${masked.contingentId ? ` · Contingent ${masked.contingentId}` : ''}`);
+    }
+  }
+  if (can(req.user.role, 'contingents:read')) {
+    const rows = await M.Contingent.find({ $or: [{ contingentId: rx }, { college: rx }, { collegeCode: rx }, { collegeCity: rx }] })
+      .select('contingentId college collegeCode collegeCity status').sort({ contingentId: 1 }).limit(4).lean();
+    for (const row of rows) add('Contingent', 'participants', row.contingentId, row.college || row.contingentId,
+      `Contingent ${row.contingentId}${row.collegeCity ? ` · ${row.collegeCity}` : ''}`);
+  }
+  if (can(req.user.role, 'events:read')) {
+    const rows = await M.Event.find({ $or: [{ eventId: rx }, { code: rx }, { name: rx }, { category: rx }, { department: rx }] })
+      .select('eventId code name category status').sort({ name: 1 }).limit(4).lean();
+    for (const row of rows) add('Event', 'events', row.eventId, row.name || row.code || row.eventId,
+      `${row.code || row.eventId}${row.category ? ` · ${row.category}` : ''} · ${row.status || 'status unavailable'}`);
+  }
+  if (can(req.user.role, 'venues:read')) {
+    const rows = await M.Venue.find({ $or: [{ venueId: rx }, { code: rx }, { name: rx }, { building: rx }, { campusLocation: rx }] })
+      .select('venueId code name building campusLocation operationalStatus').sort({ name: 1 }).limit(4).lean();
+    for (const row of rows) add('Venue', 'venues', row.venueId, row.name || row.code || row.venueId,
+      `${row.code || row.venueId}${row.building ? ` · ${row.building}` : ''} · ${row.operationalStatus || 'status unavailable'}`);
+  }
+  if (can(req.user.role, 'vendors:read')) {
+    const rows = await M.Vendor.find({ active: { $ne: false }, $or: [{ vendorId: rx }, { name: rx }, { menu: rx }] })
+      .select('vendorId name menu active').sort({ name: 1 }).limit(4).lean();
+    for (const row of rows) add('Vendor', 'vendors', row.vendorId, row.name || row.vendorId,
+      `${row.vendorId}${row.menu ? ` · ${row.menu}` : ''}`);
+  }
+  if (can(req.user.role, 'staff:read')) {
+    const rows = await M.Staff.find({ status: 'active', $or: [{ memberId: rx }, { name: rx }, { department: rx }, { roleLabel: rx }] })
+      .select('memberId name department roleLabel').sort({ name: 1 }).limit(4).lean();
+    for (const row of rows) add('Staff', 'staff', row.memberId, row.name,
+      `${row.memberId}${row.department ? ` · ${row.department}` : ''}${row.roleLabel ? ` · ${row.roleLabel}` : ''}`);
+  }
+  res.json({ results });
+}));
+
 api.post('/explain', ah(async (req, res) => {
   res.json(await explain(req.body?.reasonCodes || [], { kind: req.body?.kind || 'allocation' }));
 }));
@@ -98,7 +148,10 @@ api.get('/participants', requirePerm('participants:read'), ah(async (req, res) =
   const q = {};
   if (req.query.contingent) q.contingentId = String(req.query.contingent);
   if (req.query.housing) q.housingCategory = String(req.query.housing);
-  if (req.query.q) q.name = new RegExp(String(req.query.q).replace(/[^\w\s]/g, ''), 'i');
+  if (req.query.q) {
+    const search = new RegExp(String(req.query.q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    q.$or = [{ participantId: search }, { name: search }, { firstName: search }, { lastName: search }, { contingentId: search }, { college: search }];
+  }
   if (req.query.flag === 'minor') q.isMinor = true;
   if (req.query.flag === 'quarantined') q.quarantined = true;
   const limit = Math.min(Number(req.query.limit) || 50, 200);

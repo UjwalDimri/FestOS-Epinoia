@@ -23,8 +23,9 @@ export default function AppShell({ user, page, pages, description, theme, onTogg
  const [mobileOpen,setMobileOpen]=useState(false);
  const [notificationOpen,setNotificationOpen]=useState(false);
  const [alerts,setAlerts]=useState(null),[alertsError,setAlertsError]=useState('');
+ const [searchOpen,setSearchOpen]=useState(false),[searchQuery,setSearchQuery]=useState(''),[searchResults,setSearchResults]=useState([]),[searchLoading,setSearchLoading]=useState(false),[searchError,setSearchError]=useState('');
  const [festivalWindow,setFestivalWindow]=useState('');
- const navRef=useRef(null),menuButtonRef=useRef(null),notificationRef=useRef(null),notificationButtonRef=useRef(null);
+ const navRef=useRef(null),menuButtonRef=useRef(null),notificationRef=useRef(null),notificationButtonRef=useRef(null),searchRef=useRef(null),searchButtonRef=useRef(null),searchInputRef=useRef(null),searchResultsRef=useRef(null);
  const current=pages.find((entry)=>entry[0]===page);
  const label=current?.[1]||'Page not found';
  const group=current?.[5]||'Overview';
@@ -71,8 +72,44 @@ export default function AppShell({ user, page, pages, description, theme, onTogg
   return()=>{document.removeEventListener('pointerdown',onPointer);document.removeEventListener('keydown',onKey);};
  },[notificationOpen]);
 
+ useEffect(()=>{
+  const onKey=(event)=>{
+   if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){
+    event.preventDefault();setSearchOpen(true);setNotificationOpen(false);return;
+   }
+   if(event.key==='Escape'&&searchOpen){event.preventDefault();setSearchOpen(false);searchButtonRef.current?.focus();}
+  };
+  window.addEventListener('keydown',onKey);
+  return()=>window.removeEventListener('keydown',onKey);
+ },[searchOpen]);
+
+ useEffect(()=>{
+  if(!searchOpen)return undefined;
+  const timer=requestAnimationFrame(()=>searchInputRef.current?.focus());
+  const onPointer=(event)=>{if(!searchRef.current?.contains(event.target))setSearchOpen(false);};
+  document.addEventListener('pointerdown',onPointer);
+  return()=>{cancelAnimationFrame(timer);document.removeEventListener('pointerdown',onPointer);};
+ },[searchOpen]);
+
+ useEffect(()=>{
+  if(!searchOpen){setSearchResults([]);setSearchLoading(false);setSearchError('');return undefined;}
+  const query=searchQuery.trim();
+  if(query.length<2){setSearchResults([]);setSearchLoading(false);setSearchError('');return undefined;}
+  let active=true;
+  const controller=new AbortController();
+  const timer=setTimeout(()=>{
+   setSearchLoading(true);setSearchError('');
+   api(`/search?q=${encodeURIComponent(query)}`,{signal:controller.signal})
+    .then((result)=>{if(active)setSearchResults(result.results||[]);})
+    .catch((error)=>{if(active&&error.kind!=='aborted')setSearchError(error.message);})
+    .finally(()=>{if(active)setSearchLoading(false);});
+  },220);
+  return()=>{active=false;clearTimeout(timer);controller.abort();};
+ },[searchOpen,searchQuery]);
+
  function toggleCollapse(){setCollapsed((value)=>{const next=!value;localStorage.setItem('festos_sidebar_collapsed',String(next));return next;});}
- function navigate(key){setMobileOpen(false);setNotificationOpen(false);if(mobileOpen)requestAnimationFrame(()=>menuButtonRef.current?.focus());onNavigate(key);}
+ function navigate(key){setMobileOpen(false);setNotificationOpen(false);setSearchOpen(false);if(mobileOpen)requestAnimationFrame(()=>menuButtonRef.current?.focus());onNavigate(key);}
+ function openSearchResult(result){const query=searchQuery.trim();setSearchOpen(false);setNotificationOpen(false);onNavigate(result.page,query);}
  const initials=String(user?.name||'F').split(/\s+/).slice(0,2).map((part)=>part[0]).join('').toUpperCase();
 
  return <div className={`app-shell${collapsed?' shell-collapsed':''}`}>
@@ -94,9 +131,20 @@ export default function AppShell({ user, page, pages, description, theme, onTogg
     <button ref={menuButtonRef} className="menu-toggle" aria-label={mobileOpen?'Close navigation':'Open navigation'} aria-expanded={mobileOpen} aria-controls="primary-navigation" onClick={()=>setMobileOpen((value)=>!value)}><Icon name="menu"/></button>
     <nav className="breadcrumbs" aria-label="Breadcrumb"><span>FestOS</span><span className="breadcrumb-separator" aria-hidden="true">/</span><span>{group}</span><span className="breadcrumb-separator" aria-hidden="true">/</span><strong aria-current="page">{label}</strong></nav>
     <div className="topbar-actions">
-     <button className="global-search" type="button" disabled title="Global search is unavailable because no global search API is configured" aria-label="Global search unavailable"><Icon name="search"/><span>Search unavailable</span><kbd>⌘ K</kbd></button>
+     <div className="global-search-wrap" ref={searchRef}>
+      <button ref={searchButtonRef} className="global-search" type="button" aria-haspopup="dialog" aria-expanded={searchOpen} aria-controls="global-search-panel" aria-label="Search FestOS" onClick={()=>{setSearchOpen((value)=>!value);setNotificationOpen(false);}}><Icon name="search"/><span>Search FestOS</span><kbd>Ctrl K</kbd></button>
+      {searchOpen&&<section className="global-search-panel" id="global-search-panel" role="dialog" aria-label="Search FestOS">
+       <label className="global-search-input"><Icon name="search"/><input ref={searchInputRef} type="search" value={searchQuery} onChange={(event)=>setSearchQuery(event.target.value)} placeholder="People, contingents, events, venues…" aria-label="Search people and festival records" aria-controls="global-search-results" onKeyDown={(event)=>{if(event.key==='ArrowDown'){event.preventDefault();searchResultsRef.current?.querySelector('button')?.focus();}if(event.key==='Escape'){event.preventDefault();setSearchOpen(false);searchButtonRef.current?.focus();}}}/><kbd>Esc</kbd></label>
+       <div className="global-search-results" id="global-search-results" ref={searchResultsRef}>
+        {searchQuery.trim().length<2?<p className="global-search-hint">Type at least 2 characters to search.</p>:searchLoading?<p className="global-search-hint" role="status">Searching…</p>:searchError?<p className="global-search-error" role="alert">{searchError}</p>:searchResults.length?<>
+         {searchResults.map((result)=><button type="button" className="global-search-result" key={`${result.type}-${result.id}`} onClick={()=>openSearchResult(result)}><span className="global-search-result-copy"><strong>{result.title}</strong><small>{result.subtitle}</small></span><span className="global-search-result-type">{result.type}</span></button>)}
+         <p className="global-search-hint">{searchResults.length} results · Select a result to open its section</p>
+        </>:<p className="global-search-hint">No matching records found.</p>}
+       </div>
+      </section>}
+     </div>
      <div className="notification-wrap" ref={notificationRef}>
-      <button ref={notificationButtonRef} className="notification-trigger" type="button" aria-label={alerts===null?'Notifications':`Notifications, ${openAlerts.length} open`} aria-expanded={notificationOpen} aria-controls="notification-panel" onClick={()=>setNotificationOpen((value)=>!value)}><Icon name="alert"/>{openAlerts.length>0&&<span className="notification-count" aria-hidden="true">{openAlerts.length>99?'99+':openAlerts.length}</span>}</button>
+      <button ref={notificationButtonRef} className="notification-trigger" type="button" aria-label={alerts===null?'Notifications':`Notifications, ${openAlerts.length} open`} aria-expanded={notificationOpen} aria-controls="notification-panel" onClick={()=>{setNotificationOpen((value)=>!value);setSearchOpen(false);}}><Icon name="alert"/>{openAlerts.length>0&&<span className="notification-count" aria-hidden="true">{openAlerts.length>99?'99+':openAlerts.length}</span>}</button>
       {notificationOpen&&<section className="notification-panel" id="notification-panel" aria-label="Open notifications"><div className="notification-heading"><div><strong>Notifications</strong><span>{alerts===null?'Connecting to alerts':`${openAlerts.length} open alerts`}</span></div><button className="notification-refresh" type="button" onClick={async()=>{try{const result=await dashboardService.alerts();setAlerts(result.alerts||[]);setAlertsError('');}catch(error){setAlertsError(error.message);}}}>Refresh</button></div>
        {alertsError?<ErrorState error={alertsError}/>:alerts===null?<LoadingState/>:openAlerts.length?<ul className="notification-list">{openAlerts.slice(0,6).map((alert)=><li key={alert.key}><span className={`notification-severity severity-${String(alert.severity||'info').toLowerCase()}`}>{alert.severity||'Info'}</span><div><strong>{alert.title}</strong><p>{alert.suggestedAction||alert.detail||'Review this operational alert.'}</p></div></li>)}</ul>:<p className="notification-empty">No open notifications.</p>}
        <button className="notification-view-all" type="button" onClick={()=>navigate('dashboard')}>View alerts on Control tower <Icon name="chevron" size={14}/></button>
