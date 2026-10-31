@@ -25,6 +25,7 @@ import { listStaff, createStaff, updateStaff, listShifts, createShift, listAssig
 import { createVendor, updateVendor, vendorCompliance, vendorView, recordMeal } from '../services/vendors.js'
 import { accommodationApi } from '../modules/accommodation/accommodation.routes.js';
 import { logisticsApi } from '../modules/logistics/logistics.routes.js';
+import { staffApi } from '../modules/staff/staff.routes.js';
 import { eventsVenuesSchedulingApi } from '../modules/events/eventsVenuesScheduling.routes.js';
 
 export const api = express.Router();
@@ -52,6 +53,7 @@ api.use(accommodationApi);
 api.use(logisticsApi);
 api.use(eventsVenuesSchedulingApi);
 api.use(participantContingent);
+api.use(staffApi);
 
 api.get('/me', ah(async (req, res) => {
   res.json({ user: { ...req.user, roleLabel: ROLES[req.user.role] }, permissions: ['override:medium', 'participants:reveal'].filter((p) => can(req.user.role, p)) });

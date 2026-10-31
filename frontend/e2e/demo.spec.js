@@ -35,9 +35,18 @@ test('audit view shows the API-shaped verification fixture', async ({ page }) =>
   await expect(page.locator('pre')).toContainText('"ok": true');
 });
 
+test('staff view shows synthetic shift coverage and roster', async ({ page }) => {
+  await signIn(page);
+  await page.getByRole('button', { name: 'Staff & shifts' }).click();
+  await expect(page.getByText('Shift coverage by role')).toBeVisible();
+  await expect(page.getByText('Aarav Demo')).toBeVisible();
+  await expect(page.getByText('00:00, 01:00, 02:00, 03:00, 04:00, 05:00, 06:00, 07:00')).toBeVisible();
+});
+
 test('tablet navigation stays available and the commit dialog manages focus', async ({ page }) => {
   await signIn(page);
   await page.setViewportSize({ width: 768, height: 1024 });
+  await page.getByRole('button', { name: 'Open navigation' }).click();
   await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Audit' })).toBeVisible();
   await page.getByRole('button', { name: 'Disruptions' }).click();
   await page.getByRole('button', { name: 'Preview impact' }).click();
