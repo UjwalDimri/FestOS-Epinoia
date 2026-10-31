@@ -95,15 +95,27 @@ export async function computeAlerts(now = new Date(), stateSnapshot = null) {
   // Upsert and escalate
   const keys = new Set(out.map((a) => a.key));
   const escalateMin = state.assumptions.escalationMinutes ?? 15;
-  for (const a of out) {
-    const existing = await M.Alert.findOne({ key: a.key }).lean();
-    const firstSeen = existing?.firstSeenAt || now;
-    const acked = existing?.status === 'acknowledged';
-    const ageMin = (now - new Date(firstSeen)) / 60000;
-    await M.Alert.updateOne({ key: a.key }, {
-      $set: { ...a, lastSeenAt: now, status: acked ? 'acknowledged' : 'open', escalated: !acked && ageMin >= escalateMin },
-      $setOnInsert: { firstSeenAt: firstSeen },
-    }, { upsert: true });
+  if (out.length) {
+    const existingAlerts = await M.Alert.find({ key: { $in: [...keys] } })
+      .select('key firstSeenAt status').lean();
+    const existingByKey = new Map(existingAlerts.map((alert) => [alert.key, alert]));
+    const operations = out.map((a) => {
+      const existing = existingByKey.get(a.key);
+      const firstSeen = existing?.firstSeenAt || now;
+      const acked = existing?.status === 'acknowledged';
+      const ageMin = (now - new Date(firstSeen)) / 60000;
+      return {
+        updateOne: {
+          filter: { key: a.key },
+          update: {
+            $set: { ...a, lastSeenAt: now, status: acked ? 'acknowledged' : 'open', escalated: !acked && ageMin >= escalateMin },
+            $setOnInsert: { firstSeenAt: firstSeen },
+          },
+          upsert: true,
+        },
+      };
+    });
+    await M.Alert.bulkWrite(operations, { ordered: false });
   }
   await M.Alert.updateMany({ key: { $nin: [...keys] }, status: { $ne: 'resolved' } }, { status: 'resolved', resolvedAt: now });
   return M.Alert.find({ status: { $ne: 'resolved' } }).sort({ severity: 1 }).lean();
