@@ -6,8 +6,8 @@ import { istDateKey, addMinutes } from '../utils/time.js';
 
 const hours = (ms) => ms / 3600000;
 
-export async function computeAlerts(now = new Date()) {
-  const state = await loadState();
+export async function computeAlerts(now = new Date(), stateSnapshot = null) {
+  const state = stateSnapshot || await loadState();
   const out = [];
   const add = (a) => out.push(a);
 

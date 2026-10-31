@@ -67,11 +67,11 @@ api.post('/explain', ah(async (req, res) => {
 
 // ---------- dashboard / alerts
 api.get('/dashboard', ah(async (req, res) => {
-  const [allAlerts, people, plan, sp, merch, vendors] = await Promise.all([
-    computeAlerts(), M.Participant.countDocuments({}), activePlan('accommodation'), activePlan('schedule'),
+  const stateSnapshot = loadState();
+  const [state, allAlerts, people, plan, sp, merch, vendors] = await Promise.all([
+    stateSnapshot, stateSnapshot.then((state) => computeAlerts(new Date(), state)), M.Participant.countDocuments({}), activePlan('accommodation'), activePlan('schedule'),
     merchForecast(), M.Vendor.find({}).lean(),
   ]);
-  const state = await loadState();
   const alerts = allAlerts.filter((alert) => alert.ruleId !== 'FINE_CASE_REVIEW' || req.user.role === 'festival_director');
   res.json({
     counts: { people, contingents: state.contingents.length, events: state.events.length, venues: state.venues.length, vendors: vendors.length,

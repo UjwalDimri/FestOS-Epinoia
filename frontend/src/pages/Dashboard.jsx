@@ -7,14 +7,18 @@ const number = (value) => hasNumber(value) ? Number(value) : 0;
 const displayNumber = (value) => hasNumber(value) ? number(value).toLocaleString('en-IN') : 'Unavailable';
 const money = (value) => hasNumber(value) ? `₹${Math.round(number(value)).toLocaleString('en-IN')}` : 'Unavailable';
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, onAlertsChange }) {
  const [data,setData]=useState(null),[alerts,setAlerts]=useState(null),[metricError,setMetricError]=useState(''),[alertError,setAlertError]=useState('');
  const [metricBusy,setMetricBusy]=useState(false),[alertBusy,setAlertBusy]=useState(false),[updated,setUpdated]=useState(null);
- const loadMetrics=useCallback(async()=>{setMetricBusy(true);try{const result=await dashboardService.dashboard();setData(result);setMetricError('');setUpdated(new Date());}catch(e){setMetricError(e.message);}finally{setMetricBusy(false);}},[]);
- const loadAlerts=useCallback(async()=>{setAlertBusy(true);try{const result=await dashboardService.alerts();setAlerts(result.alerts);setAlertError('');}catch(e){setAlertError(e.message);}finally{setAlertBusy(false);}},[]);
- const load=useCallback(()=>{loadMetrics();loadAlerts();},[loadMetrics,loadAlerts]);
- useEffect(()=>{load();const timer=setInterval(load,15000);return()=>clearInterval(timer);},[load]);
- async function ack(key){try{await dashboardService.acknowledge(key);await loadAlerts();}catch(e){setAlertError(e.message);}}
+ const loadMetrics=useCallback(async()=>{setMetricBusy(true);try{const result=await dashboardService.dashboard();setData(result);setMetricError('');setUpdated(new Date());const nextAlerts=result.alerts||[];setAlerts(nextAlerts);setAlertError('');onAlertsChange?.(nextAlerts);}catch(e){setMetricError(e.message);}finally{setMetricBusy(false);}},[onAlertsChange]);
+ const load=useCallback(()=>{loadMetrics();},[loadMetrics]);
+ useEffect(()=>{
+  let active=true,refreshing=false;
+  const refresh=async()=>{if(!active||refreshing||document.visibilityState==='hidden')return;refreshing=true;await loadMetrics();refreshing=false;};
+  refresh();const timer=setInterval(refresh,60000);
+  return()=>{active=false;clearInterval(timer);};
+ },[loadMetrics]);
+ async function ack(key){setAlertBusy(true);try{await dashboardService.acknowledge(key);await loadMetrics();}catch(e){setAlertError(e.message);}finally{setAlertBusy(false);}}
  const counts=data?.counts||{},metrics=data?.accommodation?.metrics||{},schedule=data?.schedule?.metrics||{};
  const placed=hasNumber(metrics.placed)?number(metrics.placed):null,unplaced=hasNumber(metrics.unplaced)?number(metrics.unplaced):null;
  const bedTotal=placed!=null&&unplaced!=null?placed+unplaced:null;

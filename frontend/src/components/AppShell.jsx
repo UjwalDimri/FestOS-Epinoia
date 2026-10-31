@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import { dashboardService } from '../services/index.js';
 import { api, DEMO_MODE } from '../api.js';
@@ -29,11 +29,12 @@ export default function AppShell({ user, page, pages, description, theme, onTogg
  const label=current?.[1]||'Page not found';
  const group=current?.[5]||'Overview';
  const openAlerts=useMemo(()=>alerts?.filter((alert)=>alert.status==='open')||[],[alerts]);
+ const syncAlerts=useCallback((next)=>{setAlerts(next);setAlertsError('');},[]);
 
  useEffect(()=>{
   let active=true;
   async function refresh(){
-   const alertRequest=dashboardService.alerts().then((result)=>{if(active){setAlerts(result.alerts||[]);setAlertsError('');}}).catch((error)=>{if(active)setAlertsError(error.message);});
+   const alertRequest=page==='dashboard'?Promise.resolve(null):dashboardService.alerts().then((result)=>{if(active)syncAlerts(result.alerts||[]);}).catch((error)=>{if(active)setAlertsError(error.message);});
    const assumptionsRequest=DEMO_MODE?Promise.resolve(null):api('/assumptions').then((result)=>{
     const window=result.assumptions?.find((item)=>item.key==='festWindow')?.value;
     if(active)setFestivalWindow(festivalWindowLabel(window));
@@ -42,7 +43,7 @@ export default function AppShell({ user, page, pages, description, theme, onTogg
   }
   refresh();const timer=setInterval(refresh,60000);
   return()=>{active=false;clearInterval(timer);};
- },[user?.userId]);
+ },[user?.userId,page,syncAlerts]);
 
  useEffect(()=>{
   if(!mobileOpen)return undefined;
@@ -106,7 +107,7 @@ export default function AppShell({ user, page, pages, description, theme, onTogg
     </div>
    </header>
    {festivalWindow&&<div className="context-strip"><Icon name="calendar" size={14}/><span>Festival dates</span><strong>{festivalWindow}</strong></div>}
-   <main className="content"><div className="page-transition" key={page}>{children}</div></main>
+   <main className="content"><div className="page-transition" key={page}>{page==='dashboard'&&React.isValidElement(children)?React.cloneElement(children,{onAlertsChange:syncAlerts}):children}</div></main>
   </div>
  </div>;
 }
