@@ -23,20 +23,108 @@ export const ROLE_FROM_CSV = {
 };
 
 const READ_ALL = [
-  'participants:read', 'contingents:read', 'dataquality:read', 'accommodation:read', 'schedule:read',
-  'events:read', 'venues:read', 'inventory:read', 'merch:read', 'vendors:read', 'alerts:read', 'alerts:ack',
-  'constraints:read', 'assumptions:read', 'dashboard:read', 'disruptions:read', 'disruptions:preview', 'staff:read',
+  'participants:read',
+  'contingents:read',
+  'dataquality:read',
+  'accommodation:read',
+  'schedule:read',
+  'events:read',
+  'venues:read',
+  'inventory:read',
+  'merch:read',
+  'vendors:read',
+  'alerts:read',
+  'alerts:ack',
+  'constraints:read',
+  'assumptions:read',
+  'dashboard:read',
+  'disruptions:read',
+  'disruptions:preview',
+  'staff:read',
+  'staff:attendance',
 ];
 
 export const PERMISSIONS = {
   festival_director: ['*'],
-  hospitality: [...READ_ALL, 'participants:write', 'participants:reveal', 'accommodation:write', 'override:medium', 'exports:read', 'disruptions:commit'],
-  registration_desk: [...READ_ALL, 'participants:write', 'participants:reveal', 'contingents:write', 'dataquality:write', 'override:medium', 'disruptions:commit'],
-  events_team: [...READ_ALL, 'events:write', 'venues:write', 'inventory:request', 'schedule:write', 'override:medium', 'exports:read', 'disruptions:commit'],
-  logistics_head: [...READ_ALL, 'venues:write', 'inventory:write', 'inventory:request', 'override:medium', 'exports:read', 'disruptions:commit'],
-  merchandise_desk: [...READ_ALL, 'merch:issue', 'merch:replace', 'merch:manage', 'merch:return', 'override:medium', 'disruptions:commit'],
-  food_coordinator: [...READ_ALL, 'vendors:write', 'override:medium', 'disruptions:commit'],
-  volunteer: ['participants:read', 'alerts:read', 'dashboard:read', 'participants:checkin'],
+
+  hospitality: [
+    ...READ_ALL,
+    'participants:write',
+    'participants:reveal',
+    'accommodation:write',
+    'staff:write',
+    'staff:manage',
+    'override:medium',
+    'exports:read',
+    'disruptions:commit',
+  ],
+
+  registration_desk: [
+    ...READ_ALL,
+    'participants:write',
+    'participants:reveal',
+    'contingents:write',
+    'dataquality:write',
+    'staff:write',
+    'staff:manage',
+    'override:medium',
+    'disruptions:commit',
+  ],
+
+  events_team: [
+    ...READ_ALL,
+    'events:write',
+    'venues:write',
+    'inventory:request',
+    'schedule:write',
+    'staff:write',
+    'staff:manage',
+    'override:medium',
+    'exports:read',
+    'disruptions:commit',
+  ],
+
+  logistics_head: [
+    ...READ_ALL,
+    'venues:write',
+    'inventory:write',
+    'inventory:request',
+    'staff:write',
+    'staff:manage',
+    'override:medium',
+    'exports:read',
+    'disruptions:commit',
+  ],
+
+  merchandise_desk: [
+    ...READ_ALL,
+    'merch:issue',
+    'merch:replace',
+    'merch:manage',
+    'merch:return',
+    'staff:write',
+    'staff:manage',
+    'override:medium',
+    'disruptions:commit',
+  ],
+
+  food_coordinator: [
+    ...READ_ALL,
+    'vendors:write',
+    'staff:write',
+    'staff:manage',
+    'override:medium',
+    'disruptions:commit',
+  ],
+
+  volunteer: [
+    'participants:read',
+    'alerts:read',
+    'dashboard:read',
+    'participants:checkin',
+    'staff:write',
+    'staff:attendance',
+  ],
 };
 
 export function can(role, permission) {
