@@ -1,72 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { DEMO_MODE } from '../api.js';
+import { accommodationService, exportService } from '../services/index.js';
+import { ConfirmDialog, EmptyState, ErrorState, LoadingState, Toast } from '../components/Shared.jsx';
 
-export default function Plans({ user }) {
-  const [compare, setCompare] = useState(null);
-  const [active, setActive] = useState(null);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-  const canWrite = ['festival_director', 'hospitality', 'events_team'].includes(user.role);
+const fmt=(n)=>n==null?'Unavailable':Number(n).toLocaleString('en-IN');
+export default function Plans({user}){
+ const [compare,setCompare]=useState(null),[active,setActive]=useState(undefined),[rooms,setRooms]=useState(null),[unplaced,setUnplaced]=useState(null),[draft,setDraft]=useState(null);
+ const [errors,setErrors]=useState({}),[loading,setLoading]=useState(true),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[activation,setActivation]=useState(null),[reason,setReason]=useState(''),[page,setPage]=useState(1);
+ const canAccommodation=['festival_director','hospitality'].includes(user.role),canExport=['festival_director','hospitality','events_team','logistics_head'].includes(user.role);
+ async function load(){setLoading(true);setErrors({});const out=await Promise.allSettled([accommodationService.compare(),accommodationService.active(),accommodationService.rooms(),accommodationService.unplaced()]);['compare','active','rooms','unplaced'].forEach((key,i)=>{const x=out[i];if(x.status==='fulfilled'){if(key==='compare')setCompare(x.value);if(key==='active')setActive(x.value.plan);if(key==='rooms')setRooms(x.value.rooms||[]);if(key==='unplaced')setUnplaced(x.value.rows||[]);}else setErrors(v=>({...v,[key]:x.reason.message}));});setLoading(false);}
+ useEffect(()=>{load();},[]);
+ async function build(strategy){setBusy(true);setErrors({});setMessage('');try{const result=await accommodationService.build(strategy);setDraft(result);setMessage(`Backend created draft ${result.planId}. It is not active.`);}catch(e){setErrors(v=>({...v,build:e.message}));}finally{setBusy(false);}}
 
-  const load = () => {
-    api('/accommodation/compare').then(setCompare).catch((e) => setErr(e.message));
-    api('/accommodation/active').then((d) => setActive(d.plan)).catch(() => {});
-  };
-  useEffect(load, []);
-
-  async function build(strategy) {
-    setErr(''); setMsg('');
-    try { const r = await api('/plans/accommodation', { method: 'POST', body: { strategy } }); setMsg(`Draft ${r.planId} created. Activate it to make it live.`); load(); }
-    catch (e) { setErr(e.message); }
-  }
-  async function activate(planId) {
-    const reason = window.prompt('Reason for activating this plan (required):');
-    if (!reason || reason.trim().length < 5) return setErr('A reason of at least 5 characters is required.');
-    try { await api(`/plans/${planId}/activate`, { method: 'POST', body: { reason } }); setMsg(`${planId} is now active.`); load(); }
-    catch (e) { setErr(e.message); }
-  }
-  return (
-    <>
-      {err && <p className="err">{err}</p>}
-      {msg && <p className="ok">{msg}</p>}
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Strategies compared (live, on current data)</h3>
-        {compare && (
-          <table>
-            <thead><tr><th>Strategy</th><th>Placed</th><th>Unplaced</th><th>External ₹</th><th>Splits</th><th>Contingents split</th></tr></thead>
-            <tbody>
-              {Object.entries(compare.strategies).map(([k, v]) => (
-                <tr key={k}>
-                  <td>{k}{v.overBudget ? <span className="err"> · over budget</span> : ''}</td>
-                  <td>{v.placed}</td><td>{v.unplaced}</td><td>{Math.round(v.externalCostINR).toLocaleString('en-IN')}</td><td>{v.splits}</td><td>{v.contingentsSplit}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {canWrite && (
-          <div className="row" style={{ marginTop: 8 }}>
-            {['cost_first', 'cohesion_first', 'balanced'].map((s) => <button key={s} className="ghost" onClick={() => build(s)}>Create draft: {s}</button>)}
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Active accommodation plan</h3>
-        {active ? <div>{active.planId} · {active.strategy} · {active.metrics.placed} placed, {active.metrics.unplaced} unplaced</div> : <div className="muted">None active.</div>}
-        <div className="row" style={{ marginTop: 8 }}>
-          <a href="/api/export/accommodation.csv" className="ghost" style={{ padding: '4px 8px', border: '1px solid #353a44', borderRadius: 4, color: '#e8e8ea' }} onClick={(e) => { e.preventDefault(); downloadCsv('accommodation'); }}>Export accommodation CSV</a>
-          <a href="/api/export/inventory.csv" className="ghost" onClick={(e) => { e.preventDefault(); downloadCsv('inventory'); }} style={{ padding: '4px 8px', border: '1px solid #353a44', borderRadius: 4, color: '#e8e8ea' }}>Export inventory CSV</a>
-        </div>
-      </div>
-
-    </>
-  );
-
-  function downloadCsv(kind) {
-    const token = localStorage.getItem('festos_token');
-    fetch(`/api/export/${kind}.csv`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.blob()).then((b) => { const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `festos-${kind}.csv`; a.click(); });
-  }
+ async function activate(){if(reason.trim().length<5){setErrors(v=>({...v,activate:'A reason with at least 5 characters is required.'}));return;}setBusy(true);setErrors({});try{const result=await accommodationService.activate(activation.planId,reason.trim());setMessage(DEMO_MODE?'Demo activation recorded; nothing was persisted.':`Backend activated ${activation.planId}.`);setActivation(null);setReason('');setDraft(null);if(DEMO_MODE)setActive({planId:result.planId,strategy:activation.strategy,status:'active',metrics:activation.metrics});else await load();}catch(e){setErrors(v=>({...v,activate:e.message}));}finally{setBusy(false);}}
+ async function download(kind){try{const blob=await exportService.downloadCsv(kind),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`festos-${kind}.csv`;a.click();URL.revokeObjectURL(url);}catch(e){setErrors(v=>({...v,export:e.message}));}}
+ return <>
+  <Toast message={message}/>{['build','export'].filter(key=>errors[key]).map(key=><ErrorState key={key} error={errors[key]}/>)}
+  <section className="card"><h2>Accommodation strategies</h2>{loading&&!compare?<LoadingState/>:compare?<><p className="muted">Live comparison from current backend data. Creating a draft does not activate it.</p><table><thead><tr><th>Strategy</th><th>Placed</th><th>Unplaced</th><th>External ₹</th><th>Splits</th><th>Contingents split</th><th>Budget</th></tr></thead><tbody>{Object.entries(compare.strategies||{}).map(([name,m])=><tr key={name}><td>{name}</td><td>{m.placed??'Unavailable'}</td><td>{m.unplaced??'Unavailable'}</td><td>{fmt(m.externalCostINR)}</td><td>{m.splits??'Unavailable'}</td><td>{m.contingentsSplit??'Unavailable'}</td><td>{m.overBudget==null?'Unavailable':m.overBudget?'Over budget':'Within budget'}</td></tr>)}</tbody></table><p className="muted">{compare.note}</p>{canAccommodation&&<div className="row">{['cost_first','cohesion_first','balanced'].map(s=><button key={s} className="ghost" disabled={busy} onClick={()=>build(s)}>Create draft: {s}</button>)}</div>}</>:<EmptyState>Comparison unavailable.</EmptyState>}
+   {draft&&<div className="warning"><b>Draft {draft.planId}</b> · not active · placed {draft.metrics?.placed??'Unavailable'} · unplaced {draft.metrics?.unplaced??'Unavailable'}<MetricDetails metrics={draft.metrics}/>{canAccommodation&&<button className="ghost" onClick={()=>{setActivation(draft);setReason('');}}>Activate this draft</button>}</div>}
+  </section>
+  <section className="card"><h2>Accommodation plan status</h2>{errors.active?<ErrorState error={errors.active} retry={load}/>:loading&&active===undefined?<LoadingState/>:active?<><p><b>Active</b> · {active.planId} · {active.strategy} · placed {active.metrics?.placed??'Unavailable'} · unplaced {active.metrics?.unplaced??'Unavailable'}</p></>:<EmptyState>No active accommodation plan.</EmptyState>}{canExport&&<div className="row"><button className="ghost" onClick={()=>download('accommodation')}>Export accommodation CSV</button><button className="ghost" onClick={()=>download('inventory')}>Export inventory CSV</button></div>}</section>
+  <section className="card"><h2>Accommodation details</h2>{errors.rooms?<ErrorState error={errors.rooms} retry={load}/>:loading&&!rooms?<LoadingState/>:rooms?.length?<DynamicTable rows={rooms}/>:<EmptyState>No rooms returned by the backend.</EmptyState>}<h3>Unplaced people on the active plan</h3>{errors.unplaced?<ErrorState error={errors.unplaced} retry={load}/>:loading&&!unplaced?<LoadingState/>:unplaced?.length?<DynamicTable rows={unplaced}/>:<EmptyState>No unplaced rows returned.</EmptyState>}</section>
+  <ConfirmDialog open={Boolean(activation)} title="Activate accommodation plan" busy={busy} confirmLabel="Activate plan" onCancel={()=>setActivation(null)} onConfirm={activate}><p>Plan {activation?.planId} will be submitted for activation. The backend enforces plan validity and permissions.</p><label className="form-field">Reason (required, at least 5 characters)<textarea value={reason} onChange={e=>setReason(e.target.value)} minLength={5}/></label>{errors.activate&&<p className="err" role="alert">{errors.activate}</p>}</ConfirmDialog>
+ </>;
 }
+
+function DynamicTable({rows}){if(!rows?.length)return <p className="muted">No rows returned.</p>;const keys=[...new Set(rows.flatMap(r=>Object.keys(r||{})))].filter(k=>!['_id','__v'].includes(k)).slice(0,10);return <div className="table-scroll"><table><thead><tr>{keys.map(k=><th key={k}>{k.replace(/([A-Z])/g,' $1')}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={r.id||r._id||r.slotId||i}>{keys.map(k=><td key={k}>{r[k]&&typeof r[k]==='object'?JSON.stringify(r[k]):String(r[k]??'Unavailable')}</td>)}</tr>)}</tbody></table></div>;}
+function MetricDetails({metrics}){if(!metrics||!Object.keys(metrics).length)return <p className="muted">No additional metrics returned.</p>;return <dl className="metrics-list">{Object.entries(metrics).map(([k,v])=><div key={k}><dt>{k.replace(/([A-Z])/g,' $1')}</dt><dd>{v==null?'Unavailable':typeof v==='object'?JSON.stringify(v):String(v)}</dd></div>)}</dl>;}

@@ -8,7 +8,7 @@ import { can, ROLES, REVEALABLE } from '../shared/roles.js';
 import { loadState, accommodationRun, scheduleRun, foodRun, activePlan } from '../services/state.js';
 import { buildAccommodationPlan, buildSchedulePlan, activateAccommodationPlan, activateSchedulePlan } from '../services/plans.js';
 import { previewDisruption, commitDisruption, DISRUPTION_TYPES } from '../services/disruptions.js';
-import { issueMerch, replaceMerch, merchForecast } from '../services/merch.js';
+import { issueMerch, replaceMerch, returnMerch, merchForecast, merchIssues, merchandiseCatalogue, saveMerchandise } from '../services/merch.js';
 import { runCommand, verifyAuditChain, appendAudit } from '../services/command.js';
 import { computeAlerts } from '../services/alerts.js';
 import { explain } from '../services/explain.js';
@@ -20,6 +20,7 @@ import { toCsv } from '../utils/csv.js';
 import { findDuplicateCandidates } from '../import/dedupe.js';
 import { env } from '../config/env.js';
 import { participantContingent } from '../modules/participants/participantContingent.routes.js';
+import { createVendor, updateVendor, vendorCompliance, vendorView, recordMeal } from '../services/vendors.js'
 import { accommodationApi } from '../modules/accommodation/accommodation.routes.js';
 import { logisticsApi } from '../modules/logistics/logistics.routes.js';
 import { eventsVenuesSchedulingApi } from '../modules/events/eventsVenuesScheduling.routes.js';
@@ -121,8 +122,8 @@ api.post('/participants', requirePerm('participants:write'), ah(async (req, res)
   if (!['expected', 'checked_in', 'delayed', 'absent'].includes(checkInStatus)) throw badRequest('checkInStatus must be expected, checked_in, delayed or absent');
   if (body.isMinor != null && typeof body.isMinor !== 'boolean') throw badRequest('isMinor must be true or false');
   if (body.accommodationRequested != null && typeof body.accommodationRequested !== 'boolean') throw badRequest('accommodationRequested must be true or false');
-  const arrivalDateTime = body.arrivalDateTime || body.arrival ? new Date(body.arrivalDateTime || body.arrival) : undefined;
-  const departureDateTime = body.departureDateTime || body.departure ? new Date(body.departureDateTime || body.departure) : undefined;
+  const arrivalDateTime = body.arrivalDateTime ? new Date(body.arrivalDateTime) : undefined;
+  const departureDateTime = body.departureDateTime ? new Date(body.departureDateTime) : undefined;
   if ((arrivalDateTime && Number.isNaN(arrivalDateTime.getTime())) || (departureDateTime && Number.isNaN(departureDateTime.getTime()))) {
     throw badRequest('arrivalDateTime and departureDateTime must be valid dates');
   }
@@ -130,12 +131,12 @@ api.post('/participants', requirePerm('participants:write'), ah(async (req, res)
   const participant = {
     participantId, name, contingentId, college: body.college || contingent.college,
     personType, isLeader: body.isLeader === true || personType === 'leader',
-    gender: body.gender ?? body.genderAsGiven ?? null,
+    gender: body.gender ?? null,
     housingCategory,
     age, isMinor: body.isMinor == null ? (age != null && age < 18) : body.isMinor,
     contact: body.contact || '',
-    accessibilityNeeds: body.accessibilityNeeds || body.accessibility || { status: 'not_declared', needs: [] },
-    dietaryNeeds: body.dietaryNeeds || body.dietary || { status: 'unknown', needs: [] },
+    accessibilityNeeds: body.accessibilityNeeds || { status: 'not_declared', needs: [] },
+    dietaryNeeds: body.dietaryNeeds || { status: 'unknown', needs: [] },
     arrivalDateTime, departureDateTime,
     accommodationRequested: body.accommodationRequested ?? true,
     tshirtSize: body.tshirtSize || undefined,
@@ -211,9 +212,9 @@ api.post('/contingents', requirePerm('contingents:write'), ah(async (req, res) =
   if (!Number.isInteger(strengthDeclared) || strengthDeclared < 0) throw badRequest('strengthDeclared must be a non-negative integer');
   const contingent = {
     contingentId, college, strengthDeclared,
-    leader: body.leader || body.leaderName || body.contactPerson || '',
+    leader: body.leader || '',
     leaderParticipantId: body.leaderParticipantId || null,
-    escort: body.escort || body.escortName || '', escortPersonId: body.escortPersonId || null,
+    escort: body.escort || '', escortPersonId: body.escortPersonId || null,
     preferencesRaw: body.preferencesRaw || '',
     preferences: Array.isArray(body.preferences) ? body.preferences : [],
   };
@@ -244,7 +245,7 @@ api.get('/contingents/:id', requirePerm('contingents:read'), ah(async (req, res)
 
 api.post('/participants/:id/reveal', ah(async (req, res) => {
   const { field, reason } = req.body || {};
-  const canonicalField = ({ accessibility: 'accessibilityNeeds', dietary: 'dietaryNeeds' })[field] || field;
+  const canonicalField = field;
   if (!REVEALABLE[canonicalField]) throw badRequest(`Field "${field}" cannot be revealed`, { allowed: Object.keys(REVEALABLE) });
   if (!REVEALABLE[canonicalField].includes(req.user.role)) throw forbidden(`Your role cannot reveal ${canonicalField}`);
   if (!reason || reason.trim().length < 5) throw badRequest('Give a reason (at least 5 characters). Every reveal is logged.');
@@ -411,6 +412,29 @@ api.get('/merch', requirePerm('merch:read'), ah(async (req, res) => {
   res.json({ forecast: await merchForecast(), issuesToday: await M.MerchIssue.countDocuments({}) });
 }));
 
+api.get('/merchandise', requirePerm('merch:read'), ah(async (_req, res) => {
+  res.json({ catalogue: await merchandiseCatalogue(), eligibilityRules: { participants: 'Registered participants only', everyone: 'Any active participant, escort or contingent leader' } });
+}));
+
+api.post('/merchandise', requirePerm('merch:manage'), ah(async (req, res) => {
+  const item = await saveMerchandise({ ...(req.body || {}), user: req.user });
+  res.status(201).json({ item });
+}));
+
+api.get('/merchandise/issues', requirePerm('merch:read'), ah(async (_req, res) => {
+  res.json({ issues: await merchIssues() });
+}));
+
+api.post('/merchandise/issue', requirePerm('merch:issue'), ah(async (req, res) => {
+  const { participantId, item, size, desk } = req.body || {};
+  res.json(await issueMerch({ user: req.user, participantId, item, size, desk: desk || req.user.role }));
+}));
+
+api.post('/merchandise/return', requirePerm('merch:return'), ah(async (req, res) => {
+  const { issueId, participantId, item, reason } = req.body || {};
+  res.json(await returnMerch({ user: req.user, issueId, participantId, item, reason }));
+}));
+
 api.post('/merch/issue', requirePerm('merch:issue'), ah(async (req, res) => {
   const { participantId, item, size, desk } = req.body || {};
   res.json(await issueMerch({ user: req.user, participantId, item, size, desk: desk || req.user.role }));
@@ -423,7 +447,12 @@ api.post('/merch/replace', requirePerm('merch:replace'), ah(async (req, res) => 
 
 // ---------- vendors and food
 api.get('/vendors', requirePerm('vendors:read'), ah(async (req, res) => {
-  res.json({ vendors: await M.Vendor.find({}).lean(), incidents: await M.VendorIncident.find({}).lean() });
+  const [vendors, incidents] = await Promise.all([M.Vendor.find({}).sort({ vendorId: 1 }).lean(), M.VendorIncident.find({}).sort({ start: -1 }).limit(200).lean()]);
+  res.json({ vendors: vendors.map((vendor) => vendorView(vendor, req.user.role)), incidents });
+}));
+
+api.post('/vendors', requirePerm('vendors:write'), ah(async (req, res) => {
+  res.status(201).json({ vendor: await createVendor({ user: req.user, body: req.body || {} }) });
 }));
 
 api.get('/vendors/coverage', requirePerm('vendors:read'), ah(async (req, res) => {
@@ -432,13 +461,27 @@ api.get('/vendors/coverage', requirePerm('vendors:read'), ah(async (req, res) =>
   res.json({ ...foodRun(state), days, meals: ['breakfast', 'lunch', 'dinner'] });
 }));
 
+api.get('/vendors/:id/compliance', requirePerm('vendors:read'), ah(async (req, res) => {
+  res.json({ compliance: await vendorCompliance(req.params.id, await loadState()) });
+}));
+
+api.get('/vendors/:id', requirePerm('vendors:read'), ah(async (req, res) => {
+  const vendor = await M.Vendor.findOne({ vendorId: req.params.id }).lean();
+  if (!vendor) throw notFound(`No vendor ${req.params.id}`);
+  const [incidents, meals] = await Promise.all([
+    M.VendorIncident.find({ vendorId: vendor.vendorId }).sort({ start: -1 }).limit(50).lean(),
+    M.MealLog.find({ vendorId: vendor.vendorId }).sort({ date: -1, meal: 1 }).limit(100).lean(),
+  ]);
+  res.json({ vendor: vendorView(vendor, req.user.role), incidents, meals });
+}));
+
+api.put('/vendors/:id', requirePerm('vendors:write'), ah(async (req, res) => {
+  res.json({ vendor: await updateVendor({ user: req.user, vendorId: req.params.id, body: req.body || {} }) });
+}));
+
 api.post('/vendors/:id/log-meal', requirePerm('vendors:write'), ah(async (req, res) => {
   const { date, meal, served } = req.body || {};
-  return res.json(await runCommand({ user: req.user, action: 'MEAL_LOGGED', entity: { type: 'Vendor', id: req.params.id }, event: 'meal.logged' },
-    async () => {
-      await M.MealLog.updateOne({ vendorId: req.params.id, date, meal }, { served: Number(served), loggedBy: req.user.email }, { upsert: true });
-      return { summary: { vendorId: req.params.id, date, meal, served }, result: { logged: true } };
-    }));
+  return res.json(await recordMeal({ user: req.user, vendorId: req.params.id, date, meal, served }));
 }));
 
 // ---------- disruptions
