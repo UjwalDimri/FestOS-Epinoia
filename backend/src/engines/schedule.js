@@ -80,6 +80,7 @@ export function generateSchedule({ events, venues, participants, registrations, 
       .sort((a, b) => new Date(byId.get(a).arrivalDateTime) - new Date(byId.get(b).arrivalDateTime) || a.localeCompare(b));
     const heats = Math.max(minHeats, Math.ceil(ids.length / maxHeat));
     const attendance = ids.length || Number(ev.expectedParticipants || 0);
+    const heatSize = Math.ceil(attendance / heats);
     let heatMembers;
     if (ev.type === 'team') {
       // A registered team is one scheduling unit. Never divide its members across prelim heats.
@@ -104,7 +105,6 @@ export function generateSchedule({ events, venues, participants, registrations, 
         target.push(...unit);
       }
     } else {
-      const heatSize = Math.ceil(ids.length / heats);
       heatMembers = Array.from({ length: heats }, (_, index) => ids.slice(index * heatSize, (index + 1) * heatSize));
     }
     const reqs = ev.venueRequirements || [];
@@ -176,7 +176,7 @@ export function generateSchedule({ events, venues, participants, registrations, 
       const slot = {
         slotId, eventId: ev.eventId, round: 'prelims', heat: h, venueId: best.venue.venueId,
         start: best.start, end: addMinutes(best.start, dur), setupMinutes: setup, teardownMinutes: teardown,
-        expectedSize: need, participantIds: members, participantsKnown: true,
+        expectedSize: need, participantIds: members, participantsKnown: ids.length > 0,
         teamIds: [...new Set(eventRegistrations.filter((registration) => members.includes(registration.participantId) && registration.teamId).map((registration) => registration.teamId))],
         judgeIds: (ev.judgeIds || []).slice(0, 2), volunteersNeeded: volNeed,
         equipment: ev.equipmentNeeds || [], status: 'scheduled', reasonCodes: codes,
