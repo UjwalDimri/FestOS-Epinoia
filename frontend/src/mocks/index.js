@@ -8,7 +8,7 @@ export const staff = () => ({ staff: [
   {memberId:'DEMO-ST01',name:'Aarav Demo',role:'events_team',roleLabel:'Events Team',shift:'08:00-16:00'},
   {memberId:'DEMO-ST02',name:'Mira Demo',role:'events_team',roleLabel:'Events Team',shift:'16:00-00:00'},
   {memberId:'DEMO-ST03',name:'Riya Demo',role:'hospitality',roleLabel:'Hospitality',shift:'00:00-08:00'},
-], coverage: [
+], departments: ['leadership','registration','hospitality','events','logistics','merchandise','food','volunteer'], roles: [], coverage: [
   {role:'events_team',roleLabel:'Events Team',staffCount:2,coveredHours:16,uncoveredHours:[0,1,2,3,4,5,6,7]},
   {role:'hospitality',roleLabel:'Hospitality',staffCount:1,coveredHours:8,uncoveredHours:[8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]},
 ] });
@@ -26,7 +26,6 @@ export const rooms = () => ({ rooms: [] });
 export const unplaced = () => ({ rows: [] });
 export const inventory = () => ({ balances: [], lines: [], movements: [] });
 export const merch = () => ({ forecast: [], issuesToday: 0 });
-export const staff = () => ({ staff: [], departments: [], roles: [] });
 export const staffDepartments = () => ({ departments: ['leadership','registration','hospitality','events','logistics','merchandise','food','volunteer'], roles: [] });
 export const staffShifts = () => ({ shifts: [] });
 export const staffAssignments = () => ({ assignments: [] });

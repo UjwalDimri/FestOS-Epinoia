@@ -91,6 +91,69 @@ eventsVenuesSchedulingApi.post('/venues',requirePerm('venues:write'),ah(async(re
 eventsVenuesSchedulingApi.get('/venues/:id',requirePerm('venues:read'),ah(async(req,res)=>res.json({venue:await venueById(req.params.id)})));
 eventsVenuesSchedulingApi.put('/venues/:id',requirePerm('venues:write'),ah(async(req,res)=>{const venue=await venueById(req.params.id);const data=pick(req.body,venueMutable);if('code'in data&&!String(data.code||'').trim())delete data.code;if(data.capacity!=null&&(!Number.isInteger(Number(data.capacity))||Number(data.capacity)<0))throw badRequest('capacity must be a non-negative integer');if(data.capacity!=null)data.capacity=Number(data.capacity);const out=await runCommand({user:req.user,action:'VENUE_UPDATED',entity:{type:'Venue',id:venue.venueId},event:'venues.updated'},async(session)=>{await M.Venue.updateOne({venueId:venue.venueId},{$set:data},{runValidators:true,...(session?{session}:{})});return {summary:{venueId:venue.venueId,fields:Object.keys(data)},result:{venue:await M.Venue.findOne({venueId:venue.venueId}).session(session).lean()}};});res.json({success:true,data:out});}));
 eventsVenuesSchedulingApi.delete('/venues/:id',requirePerm('venues:write'),ah(async(req,res)=>{const venue=await venueById(req.params.id);const [event,plan]=await Promise.all([M.Event.exists({assignedVenueId:venue.venueId,status:{$nin:['cancelled','completed','archived']}}),activePlan('schedule')]);const booked=plan&&await M.Slot.exists({planId:plan.planId,venueId:venue.venueId,status:'scheduled',start:{$gte:new Date()}});if(event||booked)throw conflict('Venue has active events or bookings; mark it unavailable instead');const out=await runCommand({user:req.user,action:'VENUE_DEACTIVATED',entity:{type:'Venue',id:venue.venueId},reason:req.body?.reason,event:'venues.deactivated'},async(session)=>{venue.operationalStatus='closed';await venue.save(session?{session}:{});return {summary:{venueId:venue.venueId},result:{venue}};});res.json({success:true,data:out});}));
+
+// PULSE MAP: live, short-lived staff reports on venue crowding, queues and issues.
+eventsVenuesSchedulingApi.get('/pulse',requirePerm('pulse:read'),ah(async(_req,res)=>{
+  const now=new Date();
+  const [venues,reports,plan]=await Promise.all([
+    M.Venue.find({}).select('venueId code name building campusLocation capacity operationalStatus facilities coordinates mapPosition').sort({name:1}).lean(),
+    M.PulseReport.find({status:'active',expiresAt:{$gt:now}}).sort({createdAt:-1}).limit(500).lean(),
+    activePlan('schedule'),
+  ]);
+  const slots=plan?await M.Slot.find({planId:plan.planId,status:'scheduled',end:{$gt:now},start:{$lt:new Date(now.getTime()+24*60*60*1000)}}).sort({start:1}).lean():[];
+  const eventIds=[...new Set(slots.map(slot=>slot.eventId).filter(Boolean))];
+  const events=eventIds.length?await M.Event.find({eventId:{$in:eventIds}}).select('eventId name status').lean():[];
+  const eventById=new Map(events.map(event=>[event.eventId,event]));
+  const slotsByVenue=new Map();
+  for(const slot of slots){const list=slotsByVenue.get(slot.venueId)||[];list.push({...slot,eventName:eventById.get(slot.eventId)?.name||slot.eventId});slotsByVenue.set(slot.venueId,list);}
+  res.json({venues:venues.map(venue=>({...venue,events:slotsByVenue.get(venue.venueId)||[]})),reports,updatedAt:now});
+}));
+eventsVenuesSchedulingApi.post('/pulse/reports',requirePerm('pulse:report'),ah(async(req,res)=>{
+  const body=req.body||{}, venue=await venueById(String(body.venueId||''));
+  const kinds=['crowd','queue','issue'];
+  const kind=String(body.kind||'');
+  if(!kinds.includes(kind))throw badRequest('Choose a crowd, queue, or issue report');
+  const duration=Number(body.durationMinutes??60);
+  if(![30,60,120].includes(duration))throw badRequest('Report duration must be 30, 60, or 120 minutes');
+  const message=String(body.message||'').trim();
+  if(message.length>280)throw badRequest('Report details must be 280 characters or fewer');
+  const data={reportId:uid('PULSE'),venueId:venue.venueId,kind,message,expiresAt:new Date(Date.now()+duration*60000),reporterRole:req.user.role};
+  if(kind==='crowd'){
+    if(!['low','moderate','busy','full'].includes(body.level))throw badRequest('Crowd level must be low, moderate, busy, or full');
+    data.level=body.level;
+  }
+  if(kind==='queue'){
+    const wait=Number(body.waitMinutes);
+    if(!Number.isInteger(wait)||wait<0||wait>2400)throw badRequest('Queue wait must be a whole number from 0 to 2400 minutes');
+    data.waitMinutes=wait;
+  }
+  if(kind==='issue'&&!message)throw badRequest('Add a short description of the issue');
+  const out=await runCommand({user:req.user,action:'PULSE_REPORT_CREATED',entity:{type:'PulseReport',id:data.reportId},event:'pulse.reported'},async(session)=>{
+    const [report]=await M.PulseReport.create([data],session?{session}:{});
+    return {summary:{venueId:venue.venueId,kind,expiresAt:data.expiresAt},result:{report}};
+  });
+  res.status(201).json({success:true,data:out});
+}));
+eventsVenuesSchedulingApi.patch('/pulse/venues/:id/location',requirePerm('venues:write'),ah(async(req,res)=>{
+  const venue=await venueById(req.params.id), x=Number(req.body?.x), y=Number(req.body?.y);
+  if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>100||y<0||y>100)throw badRequest('Map position x and y must be between 0 and 100');
+  const mapPosition={x:Number(x.toFixed(2)),y:Number(y.toFixed(2))};
+  const out=await runCommand({user:req.user,action:'PULSE_VENUE_POSITION_SET',entity:{type:'Venue',id:venue.venueId},event:'pulse.venue-position-set'},async(session)=>{
+    await M.Venue.updateOne({venueId:venue.venueId},{$set:{mapPosition}},session?{session}:{});
+    return {summary:{venueId:venue.venueId,mapPosition},result:{venueId:venue.venueId,mapPosition}};
+  });
+  res.json({success:true,data:out});
+}));
+eventsVenuesSchedulingApi.patch('/pulse/reports/:id/resolve',requirePerm('pulse:manage'),ah(async(req,res)=>{
+  const report=await M.PulseReport.findOne({reportId:req.params.id,status:'active'});
+  if(!report)throw notFound('Active pulse report not found');
+  const out=await runCommand({user:req.user,action:'PULSE_REPORT_RESOLVED',entity:{type:'PulseReport',id:report.reportId},event:'pulse.resolved'},async(session)=>{
+    report.status='resolved';await report.save(session?{session}:{});
+    return {summary:{venueId:report.venueId,kind:report.kind},result:{report}};
+  });
+  res.json({success:true,data:out});
+}));
+
 eventsVenuesSchedulingApi.get('/venues/:id/bookings',requirePerm('venues:read'),ah(async(req,res)=>{await venueById(req.params.id);const plan=await activePlan('schedule');res.json({rows:plan?await M.Slot.find({planId:plan.planId,venueId:req.params.id}).sort({start:1}).lean():[]});}));
 eventsVenuesSchedulingApi.get('/venues/:id/availability',requirePerm('venues:read'),ah(async(req,res)=>{const venue=await venueById(req.params.id);const from=validDate(req.query.from||new Date().toISOString(),'from'),to=validDate(req.query.to||new Date(Date.now()+7*86400000).toISOString(),'to');if(to<=from)throw badRequest('to must be after from');const plan=await activePlan('schedule');const bookings=plan?await M.Slot.find({planId:plan.planId,venueId:venue.venueId,status:'scheduled',start:{$lt:to},end:{$gt:from}}).sort({start:1}).lean():[];const closures=(venue.closures||[]).filter(c=>c.start<to&&c.end>from);res.json({venueId:venue.venueId,from,to,operationalStatus:venue.operationalStatus,available:venue.operationalStatus==='available'&&!bookings.length&&!closures.length,bookings,closures});}));
 eventsVenuesSchedulingApi.get('/venues/:id/occupancy',requirePerm('venues:read'),ah(async(req,res)=>{const venue=await venueById(req.params.id);const plan=await activePlan('schedule');const now=new Date();const slot=plan&&await M.Slot.findOne({planId:plan.planId,venueId:venue.venueId,status:'scheduled',start:{$lte:now},end:{$gt:now}}).lean();res.json({venueId:venue.venueId,occupied:Boolean(slot),slot:slot||null,capacity:venue.capacity});}));

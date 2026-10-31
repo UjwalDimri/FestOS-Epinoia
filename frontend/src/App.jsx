@@ -1,4 +1,3 @@
-```jsx
 import React, { useEffect, useState } from 'react';
 import { api, getToken, setToken, setUnauthorizedHandler } from './api.js';
 import {
@@ -21,11 +20,11 @@ import Logistics from './pages/Logistics.jsx';
 import Staff from './pages/Staff.jsx';
 import Merchandise from './pages/Merchandise.jsx';
 import Vendors from './pages/Vendors.jsx';
-import Staff from './pages/Staff.jsx';
 import AccommodationOps from './pages/AccommodationOps.jsx';
 import Events from './pages/Events.jsx';
 import Venues from './pages/Venues.jsx';
 import Scheduling from './pages/Scheduling.jsx';
+import PulseMap from './pages/PulseMap.jsx';
 
 const PAGES = [
   ['dashboard', 'Control tower', Dashboard, '/dashboard', '◈', 'Overview'],
@@ -44,6 +43,7 @@ const PAGES = [
   ['events', 'Events', Events, '/events', '⚑', 'Operations'],
   ['venues', 'Venues', Venues, '/venues', '▦', 'Operations'],
   ['scheduling', 'Scheduling', Scheduling, '/scheduling', '◷', 'Operations'],
+  ['pulse', 'Festival pulse', PulseMap, '/pulse-map', '◉', 'Operations'],
   [
     'disruptions',
     'Disruptions',
@@ -228,6 +228,9 @@ export default function App() {
 
     scheduling:
       'Generate, validate, publish, and roll back event schedules.',
+
+    pulse:
+      'See live crowd, queue, and venue updates from across the festival.',
 
     disruptions:
       'Preview operational impact before an authorized change is committed.',
@@ -446,7 +449,7 @@ export default function App() {
           >
             <ErrorBoundary>
               {selected ? (
-                ['events', 'venues', 'scheduling'].includes(key) ? (
+                ['events', 'venues', 'scheduling', 'pulse'].includes(key) ? (
                   <Page user={user} />
                 ) : (
                   <>
@@ -472,4 +475,3 @@ export default function App() {
     </div>
   );
 }
-```

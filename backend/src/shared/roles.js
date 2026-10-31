@@ -42,6 +42,8 @@ const READ_ALL = [
   'disruptions:preview',
   'staff:read',
   'staff:attendance',
+  'pulse:read',
+  'pulse:report',
 ];
 
 export const PERMISSIONS = {
@@ -57,6 +59,7 @@ export const PERMISSIONS = {
     'override:medium',
     'exports:read',
     'disruptions:commit',
+    'pulse:manage',
   ],
 
   registration_desk: [
@@ -82,6 +85,7 @@ export const PERMISSIONS = {
     'override:medium',
     'exports:read',
     'disruptions:commit',
+    'pulse:manage',
   ],
 
   logistics_head: [
@@ -94,6 +98,7 @@ export const PERMISSIONS = {
     'override:medium',
     'exports:read',
     'disruptions:commit',
+    'pulse:manage',
   ],
 
   merchandise_desk: [
@@ -124,6 +129,8 @@ export const PERMISSIONS = {
     'participants:checkin',
     'staff:write',
     'staff:attendance',
+    'pulse:read',
+    'pulse:report',
   ],
 };
 

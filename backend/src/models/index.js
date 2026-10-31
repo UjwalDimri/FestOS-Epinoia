@@ -5,3 +5,4 @@ export * from './logistics.js';
 export * from './food.js';
 export * from './governance.js';
 export * from './staff.js';
+export * from './pulse.js';
