@@ -20,6 +20,8 @@ import { toCsv } from '../utils/csv.js';
 import { findDuplicateCandidates } from '../import/dedupe.js';
 import { env } from '../config/env.js';
 import { participantContingent } from '../modules/participants/participantContingent.routes.js';
+import { listStaff, createStaff, updateStaff, listShifts, createShift, listAssignments, createAssignment,
+  listAvailability, createAvailability, listAttendance, recordAttendance } from '../services/staff.js';
 import { createVendor, updateVendor, vendorCompliance, vendorView, recordMeal } from '../services/vendors.js'
 import { accommodationApi } from '../modules/accommodation/accommodation.routes.js';
 import { logisticsApi } from '../modules/logistics/logistics.routes.js';
@@ -322,6 +324,26 @@ api.post('/data/issues/:id/resolve', requirePerm('dataquality:write'), ah(async 
       return { summary: { code: d.code }, result: d };
     }));
 }));
+
+// ---------- staff, shifts, duties, availability and attendance
+api.get('/staff/departments', requirePerm('staff:read'), ah(async (_req, res) => {
+  res.json({ departments: ['leadership', 'registration', 'hospitality', 'events', 'logistics', 'merchandise', 'food', 'volunteer'], roles: Object.entries(ROLES).map(([role, label]) => ({ role, label })) });
+}));
+
+api.get('/staff', requirePerm('staff:read'), ah(async (req, res) => res.json(await listStaff({ user: req.user, query: req.query }))));
+api.post('/staff', requirePerm('staff:write'), ah(async (req, res) => res.status(201).json({ staff: await createStaff({ user: req.user, body: req.body || {} }) })));
+api.put('/staff/:memberId', requirePerm('staff:write'), ah(async (req, res) => res.json({ staff: await updateStaff({ user: req.user, memberId: req.params.memberId, body: req.body || {} }) })));
+
+api.get('/staff/shifts', requirePerm('staff:read'), ah(async (req, res) => res.json(await listShifts({ user: req.user, query: req.query }))));
+api.post('/staff/shifts', requirePerm('staff:manage'), ah(async (req, res) => res.status(201).json({ shift: await createShift({ user: req.user, body: req.body || {} }) })));
+api.get('/staff/assignments', requirePerm('staff:read'), ah(async (req, res) => res.json(await listAssignments({ user: req.user, query: req.query }))));
+api.post('/staff/assignments', requirePerm('staff:manage'), ah(async (req, res) => res.status(201).json({ assignment: await createAssignment({ user: req.user, body: req.body || {} }) })));
+
+api.get('/staff/availability', requirePerm('staff:read'), ah(async (req, res) => res.json(await listAvailability({ user: req.user, query: req.query }))));
+api.post('/staff/availability', requirePerm('staff:manage'), ah(async (req, res) => res.status(201).json({ availability: await createAvailability({ user: req.user, body: req.body || {} }) })));
+api.get('/staff/attendance', requirePerm('staff:read'), ah(async (req, res) => res.json(await listAttendance({ user: req.user, query: req.query }))));
+api.post('/staff/attendance/check-in', requirePerm('staff:attendance'), ah(async (req, res) => res.json(await recordAttendance({ user: req.user, shiftId: req.body?.shiftId, memberId: req.body?.memberId, action: 'check-in' }))));
+api.post('/staff/attendance/check-out', requirePerm('staff:attendance'), ah(async (req, res) => res.json(await recordAttendance({ user: req.user, shiftId: req.body?.shiftId, memberId: req.body?.memberId, action: 'check-out' }))));
 
 // ---------- plans and accommodation
 api.get('/plans', ah(async (req, res) => res.json({ plans: await M.Plan.find({}).sort({ createdAt: -1 }).lean() })));
