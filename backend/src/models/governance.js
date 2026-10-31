@@ -98,6 +98,25 @@ const disruptionSchema = new Schema({
   committedAt: Date,
 }, { timestamps: true, minimize: false });
 
+const fineCaseSchema = new Schema({
+  caseId: { type: String, required: true, unique: true },
+  ruleId: { type: String, required: true, index: true },
+  ruleTitle: { type: String, required: true },
+  targetType: { type: String, enum: ['participant', 'contingent'], required: true },
+  participantId: { type: String, default: null, index: true },
+  participantName: { type: String, default: null },
+  contingentId: { type: String, required: true, index: true },
+  contingentName: { type: String, default: null },
+  observedAt: { type: Date, required: true },
+  report: { type: String, required: true },
+  evidence: { type: String, default: '' },
+  proposedFine: { type: Number, min: 0, required: true },
+  status: { type: String, enum: ['pending_review', 'approved', 'dismissed'], default: 'pending_review', index: true },
+  reportedBy: { userId: String, email: String, role: String },
+  decision: { by: String, userId: String, role: String, reason: String, approvedFine: Number, at: Date },
+}, { timestamps: true, minimize: false });
+fineCaseSchema.index({ status: 1, createdAt: -1 });
+
 export const DataIssue = model('DataIssue', dataIssueSchema);
 export const DuplicateCandidate = model('DuplicateCandidate', duplicateCandidateSchema);
 export const Assumption = model('Assumption', assumptionSchema);
@@ -107,3 +126,4 @@ export const ParticipantImportBatch = model('ParticipantImportBatch', participan
 export const AuditLog = model('AuditLog', auditLogSchema);
 export const Alert = model('Alert', alertSchema);
 export const Disruption = model('Disruption', disruptionSchema);
+export const FineCase = model('FineCase', fineCaseSchema);
