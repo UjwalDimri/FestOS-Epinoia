@@ -1896,3 +1896,53 @@ input:hover, select:hover, textarea:hover { transform: translateY(-1px); }
  .login-screen,.workspace,.sidebar { filter: none; }
  .login-story:hover,.login-card:hover,.workspace .card:hover,.workspace .module-panel:hover,.workspace .stat-card:hover,.workspace .dashboard-panel:hover,.workspace .overview-card:hover,.workspace .metric-tile:hover,.workspace .venue-card:hover { transform: none; }
 }
+
+/* Hover feedback must not move controls under the pointer; moving the hit target
+   caused hover flicker and made repeated clicks difficult on long workflow pages. */
+.workspace .card:hover,
+.workspace .module-panel:hover,
+.workspace .stat-card:hover,
+.workspace .dashboard-panel:hover,
+.workspace .overview-card:hover,
+.workspace .metric-tile:hover,
+.workspace .venue-card:hover,
+.workspace .impact-item:hover,
+.workspace .financial-dashboard .dashboard-feature:hover,
+.workspace .room-tile:hover,
+.workspace .plan-row:hover,
+.workspace .schedule-slot:hover,
+.workspace .priority-item:hover,
+.workspace .snapshot-line:hover {
+ transform: none !important;
+}
+.workspace button:hover:not(:disabled),
+.workspace a:hover,
+.workspace input:hover,
+.workspace select:hover,
+.workspace textarea:hover,
+.workspace .badge:hover,
+.workspace .pill:hover,
+.workspace tbody tr:hover {
+ transform: none !important;
+}
+.workspace button,
+.workspace a,
+.workspace input,
+.workspace select,
+.workspace textarea,
+.workspace .badge,
+.workspace .pill,
+.workspace tbody tr,
+.workspace .card,
+.workspace .module-panel,
+.workspace .stat-card,
+.workspace .dashboard-panel,
+.workspace .overview-card,
+.workspace .metric-tile,
+.workspace .venue-card,
+.workspace .impact-item,
+.workspace .room-tile,
+.workspace .plan-row,
+.workspace .schedule-slot {
+ transition-property: color, background-color, background-position, border-color, box-shadow, filter, opacity !important;
+}
