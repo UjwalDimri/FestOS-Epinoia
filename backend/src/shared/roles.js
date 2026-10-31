@@ -28,6 +28,8 @@ const READ_ALL = [
   'dataquality:read',
   'accommodation:read',
   'schedule:read',
+  'events:read',
+  'venues:read',
   'inventory:read',
   'merch:read',
   'vendors:read',
@@ -39,7 +41,7 @@ const READ_ALL = [
   'disruptions:read',
   'disruptions:preview',
   'staff:read',
-  'staff:attendance'
+  'staff:attendance',
 ];
 
 export const PERMISSIONS = {
@@ -71,6 +73,8 @@ export const PERMISSIONS = {
 
   events_team: [
     ...READ_ALL,
+    'events:write',
+    'venues:write',
     'inventory:request',
     'schedule:write',
     'staff:write',
@@ -82,6 +86,7 @@ export const PERMISSIONS = {
 
   logistics_head: [
     ...READ_ALL,
+    'venues:write',
     'inventory:write',
     'inventory:request',
     'staff:write',
