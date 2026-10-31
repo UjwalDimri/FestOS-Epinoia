@@ -8,6 +8,7 @@ import { activeFor, resolve } from '../src/constraints/registry.js';
 import '../src/constraints/index.js';
 import { parseIST } from '../src/utils/time.js';
 import { summarizeStock } from '../src/modules/logistics/logistics.service.js';
+import { generateSchedule, checkSlot } from '../src/engines/schedule.js';
 
 const A = {
   cleaningBufferHours: 3, externalBudgetINR: 1e9, campusRadiusKm: 1,
@@ -39,6 +40,27 @@ test('logistics stock summary separates usable, reserved and unavailable stock',
   assert.equal(stock.missing, 1);
   assert.equal(stock.inTransit, 4);
   assert.equal(stock.totalUsable, 13);
+});
+
+test('schedule engine creates independent event slots within venue windows', () => {
+  const result = generateSchedule({
+    events: [{ eventId: 'EV-1', expectedParticipants: 75, durationMinutes: 45, venueRequirements: [], rounds: [] }],
+    venues: [{ venueId: 'V-1', capacity: 100, windows: [{ start: new Date('2026-10-31T02:30:00Z'), end: new Date('2026-10-31T06:30:00Z') }], closures: [] }],
+    participants: [], registrations: [], stock: [], assumptions: { setupMinutes: 10, teardownMinutes: 10 }, settings: {}, judges: [],
+  });
+  assert.equal(result.slots.length, 2);
+  assert.ok(result.slots.every((slot) => slot.eventId === 'EV-1' && slot.venueId === 'V-1'));
+  assert.equal(result.slots.reduce((n, slot) => n + slot.expectedSize, 0), 75);
+  assert.ok(result.slots.every((slot) => slot.participantsKnown === false));
+  assert.ok(result.slots[1].start >= result.slots[0].end);
+});
+
+test('manual schedule validation detects double-booked venues and participants', () => {
+  const one = { slotId: 'S1', venueId: 'V1', start: new Date('2026-10-31T08:00:00Z'), end: new Date('2026-10-31T09:00:00Z'), participantIds: ['P1'] };
+  const two = { slotId: 'S2', venueId: 'V1', start: new Date('2026-10-31T08:30:00Z'), end: new Date('2026-10-31T09:30:00Z'), participantIds: ['P1'] };
+  const issues = checkSlot(two, [one]);
+  assert.ok(issues.some((x) => x.kind === 'VENUE_DOUBLE_BOOKED'));
+  assert.ok(issues.some((x) => x.kind === 'PARTICIPANT_CLASH'));
 });
 
 test('a bed is never shared by overlapping stays', () => {

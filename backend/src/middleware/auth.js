@@ -22,7 +22,8 @@ export async function authenticate(req, _res, next) {
       if (!auth?.userId) throw new HttpError(401, 'Sign in required');
       const role = auth.sessionClaims?.metadata?.role || auth.sessionClaims?.publicMetadata?.role;
       if (!ROLES[role]) throw forbidden('Your account has no festival role. Ask the Director to assign one.');
-      req.user = { userId: auth.userId, email: auth.sessionClaims?.email || auth.userId, role };
+      req.user = { userId: auth.userId, email: auth.sessionClaims?.email || auth.userId, role,
+        staffMemberId: auth.sessionClaims?.publicMetadata?.staffMemberId || auth.sessionClaims?.metadata?.staffMemberId || null };
       return next();
     }
 
@@ -30,7 +31,7 @@ export async function authenticate(req, _res, next) {
     const u = await User.findById(payload.sub).lean().catch(() => null);
     const user = u || await User.findOne({ email: payload.email }).lean();
     if (!user) throw new HttpError(401, 'Account no longer exists. Sign in again.');
-    req.user = { userId: String(user._id), email: user.email, role: user.role, name: user.name };
+    req.user = { userId: String(user._id), email: user.email, role: user.role, name: user.name, staffMemberId: user.staffMemberId || null };
     next();
   } catch (e) {
     next(e instanceof HttpError ? e : new HttpError(401, 'Your session expired. Sign in again.'));

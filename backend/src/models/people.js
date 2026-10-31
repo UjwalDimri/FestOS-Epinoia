@@ -66,12 +66,15 @@ contingentSchema.index({ collegeCode: 1 }, { unique: true, partialFilterExpressi
 
 const staffSchema = new Schema({
   memberId: { type: String, required: true, unique: true },
-  name: String,
-  role: String,
+  name: { type: String, required: true, trim: true },
+  email: { type: String, trim: true, lowercase: true },
+  department: { type: String, trim: true, index: true },
+  role: { type: String, required: true, index: true },
   roleLabel: String,
   shift: String,
   phone: { type: String, select: false },
-});
+  status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
+}, { timestamps: true });
 
 const userSchema = new Schema({
   email: { type: String, required: true, unique: true, lowercase: true },

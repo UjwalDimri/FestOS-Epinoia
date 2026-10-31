@@ -28,6 +28,8 @@ const READ_ALL = [
   'dataquality:read',
   'accommodation:read',
   'schedule:read',
+  'events:read',
+  'venues:read',
   'inventory:read',
   'merch:read',
   'vendors:read',
@@ -39,6 +41,7 @@ const READ_ALL = [
   'disruptions:read',
   'disruptions:preview',
   'staff:read',
+  'staff:attendance',
 ];
 
 export const PERMISSIONS = {
@@ -49,6 +52,8 @@ export const PERMISSIONS = {
     'participants:write',
     'participants:reveal',
     'accommodation:write',
+    'staff:write',
+    'staff:manage',
     'override:medium',
     'exports:read',
     'disruptions:commit',
@@ -60,14 +65,20 @@ export const PERMISSIONS = {
     'participants:reveal',
     'contingents:write',
     'dataquality:write',
+    'staff:write',
+    'staff:manage',
     'override:medium',
     'disruptions:commit',
   ],
 
   events_team: [
     ...READ_ALL,
+    'events:write',
+    'venues:write',
     'inventory:request',
     'schedule:write',
+    'staff:write',
+    'staff:manage',
     'override:medium',
     'exports:read',
     'disruptions:commit',
@@ -75,8 +86,11 @@ export const PERMISSIONS = {
 
   logistics_head: [
     ...READ_ALL,
+    'venues:write',
     'inventory:write',
     'inventory:request',
+    'staff:write',
+    'staff:manage',
     'override:medium',
     'exports:read',
     'disruptions:commit',
@@ -88,6 +102,8 @@ export const PERMISSIONS = {
     'merch:replace',
     'merch:manage',
     'merch:return',
+    'staff:write',
+    'staff:manage',
     'override:medium',
     'disruptions:commit',
   ],
@@ -95,6 +111,8 @@ export const PERMISSIONS = {
   food_coordinator: [
     ...READ_ALL,
     'vendors:write',
+    'staff:write',
+    'staff:manage',
     'override:medium',
     'disruptions:commit',
   ],
@@ -104,6 +122,8 @@ export const PERMISSIONS = {
     'alerts:read',
     'dashboard:read',
     'participants:checkin',
+    'staff:write',
+    'staff:attendance',
   ],
 };
 

@@ -79,6 +79,7 @@ export function generateSchedule({ events, venues, participants, registrations, 
       .filter((id) => byId.has(id))
       .sort((a, b) => new Date(byId.get(a).arrivalDateTime) - new Date(byId.get(b).arrivalDateTime) || a.localeCompare(b));
     const heats = Math.max(minHeats, Math.ceil(ids.length / maxHeat));
+    const attendance = ids.length || Number(ev.expectedParticipants || 0);
     let heatMembers;
     if (ev.type === 'team') {
       // A registered team is one scheduling unit. Never divide its members across prelim heats.
@@ -111,13 +112,14 @@ export function generateSchedule({ events, venues, participants, registrations, 
     const occLen = setup + dur + teardown;
 
     for (let h = 1; h <= heatMembers.length; h++) {
-      const members = heatMembers[h - 1];
-      const need = members.length;
+      const members = heatMembers[h - 1] ||  [];
+      const need = ids.length ? members.length : Math.min(heatSize, Math.max(0, attendance - (h - 1) * heatSize));
       const volNeed = ev.volunteersNeeded || 0;
       let best = null;
       const reasons = new Set();
       for (const v of venues) {
-        const vf = new Set(feats[v.venueId] || []);
+        const vf = new Set(feats[v.venueId] || v.facilities || []);
+        if (ev.requiredVenueType && ![v.venueType, v.category].includes(ev.requiredVenueType)) { reasons.add('VENUE_TYPE_MISMATCH'); continue; }
         if (hard.has('SCH_VENUE_FEATURES') && !reqs.every((r) => vf.has(r))) { reasons.add('VENUE_FEATURES_MISSING'); continue; }
         if (hard.has('SCH_VENUE_CAPACITY') && need > Math.floor(v.capacity * factor)) { reasons.add('CAPACITY_EXCEEDED'); continue; }
         const starts = candidateStarts(v.windows || [], dur, occLen);
@@ -195,7 +197,7 @@ export function generateSchedule({ events, venues, participants, registrations, 
 
     // Later rounds: sized from the fraction assumptions, scheduled after the prelims finish, no participants yet.
     const sizes = [];
-    if (ev.rounds?.includes('semis')) sizes.push({ round: 'semis', size: Math.max(finalists, Math.round(ids.length * semisF)) });
+    if (ev.rounds?.includes('semis')) sizes.push({ round: 'semis', size: Math.max(finalists, Math.round((ids.length || attendance) * semisF)) });
     if (ev.rounds?.includes('finals')) sizes.push({ round: 'finals', size: finalists });
     const lastEnd = slots.filter((s) => s.eventId === ev.eventId).reduce((m, s) => (s.end > m ? s.end : m), new Date(0));
     let cursorBase = new Date(lastEnd.getTime() + roundGap * 60000);

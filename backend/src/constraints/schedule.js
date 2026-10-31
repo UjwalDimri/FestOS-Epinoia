@@ -8,7 +8,7 @@ register({
   label: 'Venue offers every feature the event requires (venue feature map is an assumption)',
   appliesTo: () => true,
   check: (s, c, ctx) => {
-    const feats = new Set(ctx.assumptions.venueFeatures?.[c.venue.venueId] || []);
+    const feats = new Set(ctx.assumptions.venueFeatures?.[c.venue.venueId] || c.venue.facilities || []);
     return (s.requirements || []).every((r) => feats.has(r)) ? { ok: true } : { ok: false, reason: 'VENUE_FEATURES_MISSING' };
   },
 });

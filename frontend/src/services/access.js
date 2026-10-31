@@ -6,7 +6,7 @@ const ROLES = {
  logistics_head: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
  merchandise_desk: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
  food_coordinator: ['dashboard','participants','plans','accommodation','disruptions','data','audit','logistics','merchandise','vendors','staff'],
- volunteer: ['dashboard','participants'],
+ volunteer: ['dashboard','participants','staff'],
 };
-export const roleCanSee = (role, page) => (ROLES[role] || []).includes(page);
+export const roleCanSee = (role, page) => (ROLES[role] || []).includes(page) || (['events','venues','scheduling'].includes(page) && role !== 'volunteer' && Boolean(ROLES[role]));
 export const ROLE_LABELS = { festival_director:'Festival Director', hospitality:'Hospitality', registration_desk:'Registration Desk', events_team:'Events Team', logistics_head:'Logistics Head', merchandise_desk:'Merchandise Desk', food_coordinator:'Food Coordinator', volunteer:'Volunteer' };
