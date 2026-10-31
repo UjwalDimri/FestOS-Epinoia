@@ -23,12 +23,12 @@ export default function Dashboard({ user }) {
 
  return <div className="financial-dashboard">
   <div className="dashboard-welcome">
-   <div><span className="eyebrow">FESTIVAL OPERATIONS · LIVE</span><h2>Good day, {firstName}</h2><p>Here’s the current picture across your festival.</p></div>
+   <div><span className="eyebrow">FESTIVAL OPERATIONS · LIVE</span><h2>Operations overview</h2><p>Current readiness, capacity, and priorities for {firstName}’s team.</p></div>
    <div className="dashboard-tools"><span className="dashboard-date">{today}</span><button className="dashboard-refresh" onClick={load} disabled={metricBusy||alertBusy} aria-label="Refresh dashboard"><span className={metricBusy||alertBusy?'refresh-spin':''}>↻</span> Refresh</button></div>
   </div>
   {(metricError||alertError)&&<ErrorState error={`Dashboard refresh issue: ${metricError||alertError}`} retry={load}/>}
   <section className="dashboard-feature">
-   <div className="feature-copy"><span className="feature-kicker">YOUR FESTIVAL AT A GLANCE</span><h3>Keep every team<br/>moving together.</h3><p>Track people, beds, and operational priorities from one place.</p><div className="feature-foot"><span className="live-dot"/>Updated {updated?.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})||'when connected'}</div></div>
+   <div className="feature-copy"><span className="feature-kicker">FESTIVAL READINESS</span><h3>Accommodation readiness</h3><p>Current placement against total accommodation demand.</p><div className="feature-foot"><span className="live-dot"/>Updated {updated?.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})||'when connected'}</div></div>
    <div className="feature-art" aria-hidden="true"><div className="feature-orbit orbit-one"/><div className="feature-orbit orbit-two"/><div className="feature-orbit orbit-three"/><div className="feature-center"><span>FEST</span><b>’26</b></div><i className="feature-dot dot-one"/><i className="feature-dot dot-two"/><i className="feature-dot dot-three"/></div>
    <div className="feature-progress"><div className="progress-label"><span>Accommodation readiness</span><b>{bedTotal?`${readiness}%`:'—'}</b></div><div className="progress-track"><i style={{width:`${readiness}%`}}/></div><div className="progress-caption"><span>{placed.toLocaleString()} beds placed</span><span>{unplaced.toLocaleString()} to place</span></div></div>
   </section>
