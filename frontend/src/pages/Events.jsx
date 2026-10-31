@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { PageHeader } from '../components/Shared.jsx';
 
 const blank = { name:'', description:'', category:'', department:'', coordinatorName:'', expectedParticipants:0, maximumCapacity:'', priority:'normal', durationMinutes:60, setupMinutes:15, teardownMinutes:15, requiredVenueType:'', venueRequirements:[], budget:0 };
 const localInput = (value) => { if(!value)return ''; const d=new Date(value); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
@@ -17,7 +18,7 @@ export default function Events({ user }) {
   async function view(id){try{const [event,readiness,history]=await Promise.all([api(`/events/${id}`),api(`/events/${id}/readiness`),api(`/events/${id}/history`)]);setSelected({...event,readiness,history});}catch(e){setError(e.message);}}
   const stats=[['Total events',summary?.total],['Upcoming',summary?.upcoming],['Ongoing',summary?.ongoing],['Completed',summary?.completed],['Pending approval',summary?.pendingApproval],['Unscheduled',summary?.unscheduled],['With conflicts',summary?.unresolvedConflicts]];
   return <section className="module-page">
-    <div className="module-heading"><div><p className="eyebrow">OPERATIONS / EVENTS</p><h1>Events</h1><p className="muted">Build proposals, coordinate owners, and track event readiness.</p></div>{writable&&<button className="primary" onClick={()=>{setSelected(null);setEditing({...blank});}}>＋ Create Event</button>}</div>
+    <PageHeader title="Events" description="Build proposals, coordinate owners, and track event readiness." breadcrumbs={[{label:'Operations'}]} actions={writable&&<button className="primary" onClick={()=>{setSelected(null);setEditing({...blank});}}>Create event</button>}/>
     {error&&<div className="notice error">{error}</div>}
     <div className="stats-grid">{stats.map(([l,n])=><div className="stat-card" key={l}><span>{l}</span><strong>{n??'—'}</strong></div>)}</div>
     {editing&&<div className="module-panel"><div className="panel-title"><div><p className="eyebrow">EVENT WORKSPACE</p><h2>{editing.eventId?'Edit event':'Create an event'}</h2></div><button className="ghost" onClick={()=>setEditing(null)}>Close</button></div>
