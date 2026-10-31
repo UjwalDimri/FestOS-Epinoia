@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { dashboardService } from '../services/index.js';
 import { ErrorState, LoadingState } from '../components/Shared.jsx';
 
-const number = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
-const money = (value) => value == null ? '—' : `₹${Math.round(number(value)).toLocaleString('en-IN')}`;
+const hasNumber = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+const number = (value) => hasNumber(value) ? Number(value) : 0;
+const displayNumber = (value) => hasNumber(value) ? number(value).toLocaleString('en-IN') : 'Unavailable';
+const money = (value) => hasNumber(value) ? `₹${Math.round(number(value)).toLocaleString('en-IN')}` : 'Unavailable';
 
 export default function Dashboard({ user }) {
  const [data,setData]=useState(null),[alerts,setAlerts]=useState(null),[metricError,setMetricError]=useState(''),[alertError,setAlertError]=useState('');
@@ -14,7 +16,8 @@ export default function Dashboard({ user }) {
  useEffect(()=>{load();const timer=setInterval(load,15000);return()=>clearInterval(timer);},[load]);
  async function ack(key){try{await dashboardService.acknowledge(key);await loadAlerts();}catch(e){setAlertError(e.message);}}
  const counts=data?.counts||{},metrics=data?.accommodation?.metrics||{},schedule=data?.schedule?.metrics||{};
- const placed=number(metrics.placed),unplaced=number(metrics.unplaced),bedTotal=placed+unplaced;
+ const placed=hasNumber(metrics.placed)?number(metrics.placed):null,unplaced=hasNumber(metrics.unplaced)?number(metrics.unplaced):null;
+ const bedTotal=placed!=null&&unplaced!=null?placed+unplaced:null;
  const readiness=bedTotal?Math.round(placed/bedTotal*100):0;
  const capacity=Array.isArray(metrics.perNight)?metrics.perNight:[];
  const maxDemand=Math.max(1,...capacity.map(n=>number(n.demand)),...capacity.map(n=>number(n.capacity)));
@@ -26,16 +29,16 @@ export default function Dashboard({ user }) {
    <div><span className="eyebrow">FESTIVAL OPERATIONS · LIVE</span><h2>Good day, {firstName}</h2><p>Here’s the current picture across your festival.</p></div>
    <div className="dashboard-tools"><span className="dashboard-date">{today}</span><button className="dashboard-refresh" onClick={load} disabled={metricBusy||alertBusy} aria-label="Refresh dashboard"><span className={metricBusy||alertBusy?'refresh-spin':''}>↻</span> Refresh</button></div>
   </div>
-  {(metricError||alertError)&&<ErrorState error={`Dashboard refresh issue: ${metricError||alertError}`} retry={load}/>}
+ {metricError&&<ErrorState error={`Metrics unavailable: ${metricError}`} retry={loadMetrics}/>}
   <section className="dashboard-feature">
    <div className="feature-copy"><span className="feature-kicker">YOUR FESTIVAL AT A GLANCE</span><h3>Keep every team<br/>moving together.</h3><p>Track people, beds, and operational priorities from one place.</p><div className="feature-foot"><span className="live-dot"/>Updated {updated?.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})||'when connected'}</div></div>
    <div className="feature-art" aria-hidden="true"><div className="feature-orbit orbit-one"/><div className="feature-orbit orbit-two"/><div className="feature-orbit orbit-three"/><div className="feature-center"><span>FEST</span><b>’26</b></div><i className="feature-dot dot-one"/><i className="feature-dot dot-two"/><i className="feature-dot dot-three"/></div>
-   <div className="feature-progress"><div className="progress-label"><span>Accommodation readiness</span><b>{bedTotal?`${readiness}%`:'—'}</b></div><div className="progress-track"><i style={{width:`${readiness}%`}}/></div><div className="progress-caption"><span>{placed.toLocaleString()} beds placed</span><span>{unplaced.toLocaleString()} to place</span></div></div>
+   <div className="feature-progress"><div className="progress-label"><span>Accommodation readiness</span><b>{bedTotal!=null?`${readiness}%`:'Unavailable'}</b></div><div className="progress-track"><i style={{width:`${readiness}%`}}/></div><div className="progress-caption"><span>{placed==null?'Beds placed unavailable':`${displayNumber(placed)} beds placed`}</span><span>{unplaced==null?'Unplaced count unavailable':`${displayNumber(unplaced)} to place`}</span></div></div>
   </section>
   <section className="overview-grid" aria-label="Festival overview metrics">
    <OverviewCard label="People registered" value={counts.people} note="Participants and escorts" tone="coral" icon="↗"/>
-   <OverviewCard label="Beds placed" value={metrics.placed} note={metrics.unplaced==null?'Active accommodation plan':`${number(metrics.unplaced).toLocaleString()} people awaiting placement`} tone="peach" icon="⌂"/>
-   <OverviewCard label="Open data issues" value={counts.dataIssuesOpen} note={`${counts.duplicatesOpen??'—'} possible duplicates`} tone="plum" icon="≋"/>
+   <OverviewCard label="Beds placed" value={metrics.placed} note={metrics.unplaced==null?(data?.accommodation?'Placement total unavailable':'No active accommodation plan'):`${displayNumber(metrics.unplaced)} people awaiting placement`} tone="peach" icon="⌂"/>
+   <OverviewCard label="Open data issues" value={counts.dataIssuesOpen} note={`${displayNumber(counts.duplicatesOpen)} possible duplicates`} tone="plum" icon="≋"/>
    <OverviewCard label="Schedule clashes" value={schedule.participantClashes} note="Participant conflicts found" tone="sand" icon="◷"/>
   </section>
   <section className="dashboard-lower-grid">
@@ -47,14 +50,14 @@ export default function Dashboard({ user }) {
    <div className="dashboard-panel priorities-panel">
     <div className="dashboard-panel-head"><div><span className="eyebrow">NEEDS ATTENTION</span><h3>Open priorities</h3></div><span className="priority-count">{alerts?.filter(a=>a.status!=='acknowledged').length??'—'}</span></div>
     {alertBusy&&alerts===null?<LoadingState/>:alerts?.length?<div className="priority-list">{alerts.slice(0,5).map((alert,index)=><article className="priority-item" key={alert.key} style={{'--item-delay':`${index*55}ms`}}><span className={`priority-severity ${String(alert.severity||'').toLowerCase()}`}/><div className="priority-copy"><b>{alert.title}</b><span>{alert.detail||alert.suggestedAction||alert.ownerRole||'Review operational alert'}</span></div><div className="priority-actions">{alert.status==='acknowledged'?<span className="acknowledged">Done</span>:user?.role==='volunteer'?<span className="muted">Open</span>:<button className="priority-ack" disabled={alertBusy} onClick={()=>ack(alert.key)} aria-label={`Acknowledge ${alert.title}`}>↗</button>}</div></article>)}</div>:<div className="chart-empty compact"><span className="empty-ring">✓</span><b>All clear for now</b><span>No open priorities returned by the operations engine.</span></div>}
-    {alertError&&<p className="dashboard-inline-error">{alertError}</p>}
+    {alertError&&<p className="dashboard-inline-error">Alerts unavailable: {alertError} <button className="ghost" onClick={loadAlerts} disabled={alertBusy}>Retry</button></p>}
    </div>
   </section>
   <section className="dashboard-foot-grid">
-   <div className="dashboard-panel budget-panel"><div><span className="eyebrow">BUDGET WATCH</span><h3>External accommodation</h3><p>Spend against the approved budget</p></div><div className="budget-chart" style={{'--budget-fill':`${metrics.budgetINR?Math.min(100,number(metrics.externalCostINR)/number(metrics.budgetINR)*100):0}%`}}><div><b>{metrics.budgetINR?Math.round(number(metrics.externalCostINR)/number(metrics.budgetINR)*100):'—'}<small>%</small></b><span>used</span></div></div><div className="budget-values"><span>Spent<b>{money(metrics.externalCostINR)}</b></span><span>Budget<b>{money(metrics.budgetINR)}</b></span></div></div>
-   <div className="dashboard-panel quick-summary"><div><span className="eyebrow">OPERATIONS SNAPSHOT</span><h3>Today’s overview</h3></div><div className="snapshot-line"><span>Festival participants</span><b>{counts.people??'—'}</b></div><div className="snapshot-line"><span>Open data issues</span><b>{counts.dataIssuesOpen??'—'}</b></div><div className="snapshot-line"><span>Possible duplicate records</span><b>{counts.duplicatesOpen??'—'}</b></div><div className="snapshot-line"><span>Participant schedule clashes</span><b>{schedule.participantClashes??'—'}</b></div></div>
+   <div className="dashboard-panel budget-panel"><div><span className="eyebrow">BUDGET WATCH</span><h3>External accommodation</h3><p>Spend against the approved budget</p></div><div className="budget-chart" style={{'--budget-fill':`${hasNumber(metrics.budgetINR)&&number(metrics.budgetINR)>0&&hasNumber(metrics.externalCostINR)?Math.min(100,number(metrics.externalCostINR)/number(metrics.budgetINR)*100):0}%`}}><div><b>{hasNumber(metrics.budgetINR)&&number(metrics.budgetINR)>0&&hasNumber(metrics.externalCostINR)?Math.round(number(metrics.externalCostINR)/number(metrics.budgetINR)*100):'Unavailable'}<small>%</small></b><span>used</span></div></div><div className="budget-values"><span>Spent<b>{money(metrics.externalCostINR)}</b></span><span>Budget<b>{money(metrics.budgetINR)}</b></span></div></div>
+   <div className="dashboard-panel quick-summary"><div><span className="eyebrow">OPERATIONS SNAPSHOT</span><h3>Today’s overview</h3></div><div className="snapshot-line"><span>Festival participants</span><b>{displayNumber(counts.people)}</b></div><div className="snapshot-line"><span>Open data issues</span><b>{displayNumber(counts.dataIssuesOpen)}</b></div><div className="snapshot-line"><span>Possible duplicate records</span><b>{displayNumber(counts.duplicatesOpen)}</b></div><div className="snapshot-line"><span>Participant schedule clashes</span><b>{displayNumber(schedule.participantClashes)}</b></div></div>
   </section>
  </div>;
 }
 
-function OverviewCard({label,value,note,tone,icon}){return <article className={`overview-card ${tone}`}><div className="overview-card-top"><span>{label}</span><i aria-hidden="true">{icon}</i></div><strong>{value==null?'—':Number(value).toLocaleString('en-IN')}</strong><small>{note}</small><span className="card-glint" aria-hidden="true"/></article>}
+function OverviewCard({label,value,note,tone,icon}){return <article className={`overview-card ${tone}`}><div className="overview-card-top"><span>{label}</span><i aria-hidden="true">{icon}</i></div><strong>{displayNumber(value)}</strong><small>{note}</small><span className="card-glint" aria-hidden="true"/></article>}

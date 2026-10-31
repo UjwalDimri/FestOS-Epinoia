@@ -73,6 +73,7 @@ Password for every account: **FestOS@2026** (set `SEED_PASSWORD` in `.env` to ch
 - `GET /data/issues` · `GET /data/headcount` · `GET /data/duplicates` · `POST /data/duplicates/:id/dismiss` · `POST /data/issues/:id/resolve`
 - `POST /plans/accommodation` · `POST /plans/schedule` · `POST /plans/:planId/activate` · `GET /accommodation/compare` · `GET /accommodation/active` · `GET /accommodation/unplaced` · `GET /rooms`
 - `GET /schedule/active`
+- `GET /staff` (role-masked core-team roster and 24-hour shift coverage gaps)
 - `GET /inventory` · `POST /inventory/move`
 - `GET /merch` · `POST /merch/issue` · `POST /merch/replace`
 - `GET /vendors` · `GET /vendors/coverage` · `POST /vendors/:id/log-meal`

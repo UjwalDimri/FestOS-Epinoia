@@ -59,6 +59,9 @@ button:disabled { cursor: not-allowed; opacity: .56; }
 .nav-item.on .nav-indicator { background: #dce4ee; }
 .sidebar-bottom { align-items: center; border-top: 1px solid #334258; color: #aeb8c6; display: flex; font-size: 10px; gap: 8px; margin-top: auto; padding: 16px 8px 0; }
 .connection-dot { background: #80a58e; border-radius: 50%; height: 7px; width: 7px; }
+.staff-search { display: block; min-width: min(240px, 100%); }
+.staff-search input { width: 100%; }
+.sr-only { clip: rect(0, 0, 0, 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 .workspace { margin-left: 246px; min-height: 100vh; }
 .topbar { align-items: center; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; height: 62px; justify-content: space-between; padding: 0 34px; position: sticky; top: 0; z-index: 10; }
 .breadcrumbs { align-items: center; color: var(--ink-muted); display: flex; font-size: 12px; gap: 10px; }

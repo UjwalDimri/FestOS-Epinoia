@@ -4,6 +4,14 @@ const demoAlerts = () => [{key:'demo-bed-shortfall',severity:'medium',title:'Dem
 export const dashboard = () => ({ counts: { people: 3, dataIssuesOpen: 1 }, accommodation: { metrics: { placed: 2, unplaced: 1, externalCostINR: 1200, budgetINR: 5000, perNight: [{night:'2026-10-30',demand:3,capacity:2,shortfall:1}] } }, schedule: { metrics: { participantClashes: 1 } }, alerts: demoAlerts() });
 export const alerts = () => ({ alerts: demoAlerts() });
 export const participants = () => ({ rows: [{participantId:'DEMO-001',name:'Asha Demo',contingentId:'DEMO',housingCategory:'Unavailable',personType:'participant'}], total: 1, page: 1, limit: 25 });
+export const staff = () => ({ staff: [
+  {memberId:'DEMO-ST01',name:'Aarav Demo',role:'events_team',roleLabel:'Events Team',shift:'08:00-16:00'},
+  {memberId:'DEMO-ST02',name:'Mira Demo',role:'events_team',roleLabel:'Events Team',shift:'16:00-00:00'},
+  {memberId:'DEMO-ST03',name:'Riya Demo',role:'hospitality',roleLabel:'Hospitality',shift:'00:00-08:00'},
+], coverage: [
+  {role:'events_team',roleLabel:'Events Team',staffCount:2,coveredHours:16,uncoveredHours:[0,1,2,3,4,5,6,7]},
+  {role:'hospitality',roleLabel:'Hospitality',staffCount:1,coveredHours:8,uncoveredHours:[8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]},
+] });
 export const schedule = () => ({ plan: {planId:'DEMO-SCHEDULE',metrics:{slots:1,participantClashes:1,unscheduledRounds:0,notPresent:0,equipmentShortfall:0}}, slots: [{slotId:'DEMO-SLOT-1',eventId:'DEMO-EVENT',venueId:'DEMO-VENUE',start:'2026-10-30T10:00:00Z',expectedSize:12,status:'conflict',reasonCodes:['participant_clash']}], venues: [{venueId:'DEMO-VENUE',name:'Demo Hall',capacity:30,indoorOutdoor:'indoor'}] });
 export const compare = () => ({ strategies: { balanced:{placed:2,unplaced:1,externalCostINR:1200,splits:0,contingentsSplit:0,overBudget:false} }, note: 'Deterministic demo fixture.' });
 export const accommodation = () => ({ plan: {planId:'DEMO-ACCOM',strategy:'balanced',status:'active',metrics:{placed:2,unplaced:1}}, allocations: [] });
