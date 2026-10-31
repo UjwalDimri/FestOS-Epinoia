@@ -12,6 +12,17 @@ export const disruptionsService = { list: () => call('disruptions', '/disruption
 export const auditService = { list: (limit = 100) => call('audit', `/audit?limit=${limit}`), verify: () => call('verify', '/audit/verify') };
 export const dataQualityService = { headcount: () => call('headcount', '/data/headcount'), issues: (query = '') => call('issues', `/data/issues${query}`), duplicates: () => call('duplicates', '/data/duplicates'), dismissDuplicate: (id, reason) => write(`/data/duplicates/${encodeURIComponent(id)}/dismiss`, { method: 'POST', body: { reason } }, () => mocks.duplicateDismissed(id)), resolveIssue: (id, accept, reason) => write(`/data/issues/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: { accept, reason } }, () => mocks.issueResolved(id, accept)) };
 export const logisticsService = { inventory: () => call('inventory', '/inventory'), merch: () => call('merch', '/merch'), vendors: () => call('vendors', '/vendors'), coverage: () => call('coverage', '/vendors/coverage') };
+export const staffService = {
+ list: () => call('staff', '/staff'), departments: () => call('staffDepartments', '/staff/departments'),
+ shifts: () => call('staffShifts', '/staff/shifts'), assignments: () => call('staffAssignments', '/staff/assignments'),
+ availability: () => call('staffAvailability', '/staff/availability'), attendance: () => call('staffAttendance', '/staff/attendance'),
+ create: (body) => write('/staff', { method: 'POST', body }, () => mocks.savedStaff(body)),
+ update: (memberId, body) => write(`/staff/${encodeURIComponent(memberId)}`, { method: 'PUT', body }, () => mocks.savedStaff({ ...body, memberId })),
+ createShift: (body) => write('/staff/shifts', { method: 'POST', body }, () => mocks.savedStaffShift(body)),
+ createAssignment: (body) => write('/staff/assignments', { method: 'POST', body }, () => mocks.savedStaffAssignment(body)),
+ createAvailability: (body) => write('/staff/availability', { method: 'POST', body }, () => mocks.savedStaffAvailability(body)),
+ checkIn: (shiftId) => write('/staff/attendance/check-in', { method: 'POST', body: { shiftId } }, () => mocks.staffAttendanceAction(shiftId, 'check-in')),
+ checkOut: (shiftId) => write('/staff/attendance/check-out', { method: 'POST', body: { shiftId } }, () => mocks.staffAttendanceAction(shiftId, 'check-out')),
 export const vendorsService = {
  list: () => call('vendors', '/vendors'),
  detail: (id) => call('vendorDetail', `/vendors/${encodeURIComponent(id)}`),
