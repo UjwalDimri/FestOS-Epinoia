@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { disruptionsService, vendorsService } from '../services/index.js';
-import { ConfirmDialog, EmptyState, ErrorState, LoadingState } from '../components/Shared.jsx';
+import { ConfirmDialog, EmptyState, ErrorState, LoadingState, StatusBadge } from '../components/Shared.jsx';
 
 const blankForm = () => ({ vendorId: '', name: '', menu: '', menuItemsText: '', dietaryTags: '', certificateNumber: '', certExpiry: '', open: '07:00', close: '23:00', capacity: '0', paymentTermsRaw: '', ratePerMealINR: '', contractedMeals: '', minimumGuaranteeMeals: '', advancePaidINR: '0', contractAmountINR: '', amountPaidINR: '0', settlementStatus: 'pending', settlementNotes: '', active: true, reason: '' });
 const dateOnly = (value) => value ? new Date(value).toISOString().slice(0, 10) : '';
@@ -90,44 +90,31 @@ export default function Vendors({ user }) {
     catch (e) { setError(e.message); } finally { setBusy(false); }
   }
   const field = (key, label, type = 'text', required = false) => <label className="form-field" key={key}>{label}<input type={type} required={required} disabled={busy || (editing && key === 'vendorId')} value={form[key]} onChange={(e) => setForm({ ...form, [key]: type === 'checkbox' ? e.target.checked : e.target.value })}/></label>;
-  const coveredCount = coverage?.summary?.cells ? coverage.summary.cells - coverage.summary.uncovered : 0;
+  const coveredCount = coverage?.summary?.cells == null ? null : coverage.summary.cells - Number(coverage.summary.uncovered || 0);
 
-  return <>
-    <p className="muted">Manage vendor operations, dietary service coverage, hygiene certificates, interruption impact, and payment settlement.</p>
+  return <div className="vendor-page">
     {message && <p className="toast" role="status">{message}</p>}{error && <ErrorState error={error} retry={load}/>}
 
-    {canManage && <section className="card"><h2>{editing ? `Edit vendor · ${form.vendorId}` : 'Add vendor'}</h2>
+    {canManage && <section className="card vendor-form-card"><header className="section-heading vendor-section-heading"><div><span className="eyebrow">VENDOR PROFILE</span><h2>{editing ? `Edit vendor · ${form.vendorId}` : 'Add vendor'}</h2><p className="muted">Group service, food safety, and payment details so each can be reviewed independently.</p></div></header>
       <form onSubmit={saveVendor}>
-        <div className="form-grid">
-          {field('vendorId', 'Vendor ID', 'text', true)}{field('name', 'Vendor name', 'text', true)}{field('menu', 'Menu / cuisine', 'text', true)}
-          {field('dietaryTags', 'Dietary tags (comma separated)')}{field('capacity', 'Capacity per meal service', 'number', true)}
-          {field('open', 'Opens (24-hour time)', 'time', true)}{field('close', 'Closes (24-hour time)', 'time', true)}
-          {field('certificateNumber', 'Hygiene certificate number')}{field('certExpiry', 'Certificate valid through', 'date')}
-          {field('paymentTermsRaw', 'Payment terms')}{field('ratePerMealINR', 'Rate per meal (INR)', 'number')}
-          {field('contractedMeals', 'Contracted meals', 'number')}{field('minimumGuaranteeMeals', 'Minimum guarantee meals', 'number')}
-          {field('advancePaidINR', 'Advance paid (INR)', 'number')}{field('contractAmountINR', 'Contract amount (INR)', 'number')}
-          {field('amountPaidINR', 'Total paid (INR)', 'number')}
-          <label className="form-field">Settlement status<select disabled={busy} value={form.settlementStatus} onChange={(e) => setForm({ ...form, settlementStatus: e.target.value })}>{['pending','advance_paid','partially_paid','settled','on_hold'].map((status) => <option key={status}>{status}</option>)}</select></label>
-          <label className="form-field">Vendor status<select disabled={busy} value={String(form.active)} onChange={(e) => setForm({ ...form, active: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Paused</option></select></label>
-          <label className="form-field">Settlement notes<input disabled={busy} value={form.settlementNotes} onChange={(e) => setForm({ ...form, settlementNotes: e.target.value })}/></label>
-          <label className="form-field">Change reason<input disabled={busy} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Required for payment changes"/></label>
-        </div>
-        <label className="form-field">Menu items (one per line: item | dietary tags | allergens | notes)<textarea disabled={busy} value={form.menuItemsText} onChange={(e) => setForm({ ...form, menuItemsText: e.target.value })} placeholder={'Paneer bowl | vegetarian, jain | nuts | no onion or garlic'}/></label>
+        <fieldset className="vendor-field-group"><legend>Vendor and service</legend><div className="form-grid">{field('vendorId', 'Vendor ID', 'text', true)}{field('name', 'Vendor name', 'text', true)}{field('menu', 'Menu / cuisine', 'text', true)}{field('capacity', 'Capacity per meal service', 'number', true)}{field('open', 'Opens', 'time', true)}{field('close', 'Closes', 'time', true)}<label className="form-field">Vendor status<select disabled={busy} value={String(form.active)} onChange={(e) => setForm({ ...form, active: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Paused</option></select></label></div></fieldset>
+        <fieldset className="vendor-field-group"><legend>Food safety and dietary service</legend><div className="form-grid">{field('dietaryTags', 'Dietary tags (comma separated)')}{field('certificateNumber', 'Hygiene certificate number')}{field('certExpiry', 'Certificate valid through', 'date')}</div><label className="form-field">Menu items (one per line: item | dietary tags | allergens | notes)<textarea disabled={busy} value={form.menuItemsText} onChange={(e) => setForm({ ...form, menuItemsText: e.target.value })} placeholder="Paneer bowl | vegetarian, jain | nuts | no onion or garlic"/><small>Use one line per menu item. Keep allergens explicit.</small></label></fieldset>
+        <fieldset className="vendor-field-group"><legend>Payment and settlement</legend><div className="form-grid">{field('paymentTermsRaw', 'Payment terms')}{field('ratePerMealINR', 'Rate per meal (INR)', 'number')}{field('contractedMeals', 'Contracted meals', 'number')}{field('minimumGuaranteeMeals', 'Minimum guarantee meals', 'number')}{field('advancePaidINR', 'Advance paid (INR)', 'number')}{field('contractAmountINR', 'Contract amount (INR)', 'number')}{field('amountPaidINR', 'Total paid (INR)', 'number')}<label className="form-field">Settlement status<select disabled={busy} value={form.settlementStatus} onChange={(e) => setForm({ ...form, settlementStatus: e.target.value })}>{['pending','advance_paid','partially_paid','settled','on_hold'].map((status) => <option key={status}>{status}</option>)}</select></label><label className="form-field">Settlement notes<input disabled={busy} value={form.settlementNotes} onChange={(e) => setForm({ ...form, settlementNotes: e.target.value })}/></label><label className="form-field">Change reason<input disabled={busy} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Required for payment changes"/></label></div></fieldset>
         <div className="row"><button className="primary" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save vendor' : 'Add vendor'}</button>{editing && <button type="button" className="ghost" disabled={busy} onClick={resetForm}>Cancel edit</button>}</div>
       </form>
     </section>}
 
-    <section className="card"><div className="row between"><h2>Vendor directory</h2><span className="badge">{vendors.length} vendors</span></div>
+    <section className="card"><header className="section-heading vendor-section-heading"><div><span className="eyebrow">SUPPLIER RECORDS</span><h2>Vendor directory</h2><p className="muted">Compliance and payment actions are available according to your role.</p></div><span className="participant-result-count">{vendors.length} vendors</span></header>
       {loading ? <LoadingState/> : vendors.length ? <div className="table-scroll"><table><thead><tr><th>Vendor</th><th>Menu and diet tags</th><th>Capacity / hours</th><th>Hygiene certificate</th><th>Settlement</th><th>Status</th><th>Actions</th></tr></thead><tbody>{vendors.map((v) => <tr key={v.vendorId}>
         <td><b>{v.name}</b><div className="muted">{v.vendorId}</div></td><td>{v.menu}<div className="muted">{(v.dietaryTags || []).join(', ') || 'No dietary tags'}</div></td>
         <td>{v.capacity ?? '—'} per meal<div className="muted">{v.hours?.open || '—'}–{v.hours?.close || '—'}</div></td>
-        <td>{v.certExpiry ? dateOnly(v.certExpiry) : 'Certificate missing'}<div className="muted">{v.certificateNumber || 'Certificate number unavailable'}</div></td>
+        <td>{v.certExpiry ? dateOnly(v.certExpiry) : <StatusBadge tone="warning">Certificate missing</StatusBadge>}<div className="muted">{v.certificateNumber || 'Certificate number unavailable'}</div></td>
         <td>{v.settlementStatus || '—'}{v.amountDueINR != null && <div className="muted">Due ₹{v.amountDueINR.toLocaleString('en-IN')}</div>}</td>
-        <td>{v.active === false ? 'Paused' : 'Active'}</td><td><button className="ghost" onClick={() => inspectVendor(v.vendorId)}>Compliance</button>{canManage && <> <button className="ghost" disabled={busy} onClick={() => editVendor(v.vendorId)}>Edit</button></>}</td>
+        <td><StatusBadge tone={v.active === false ? 'neutral' : 'success'}>{v.active === false ? 'Paused' : 'Active'}</StatusBadge></td><td><button type="button" className="ghost" onClick={() => inspectVendor(v.vendorId)}>Compliance</button>{canManage && <> <button type="button" className="ghost" disabled={busy} onClick={() => editVendor(v.vendorId)}>Edit</button></>}</td>
       </tr>)}</tbody></table></div> : <EmptyState>No vendors are configured.</EmptyState>}
     </section>
 
-    <section className="card"><div className="row between"><h2>Dietary coverage by day and meal</h2><span className="badge">{coveredCount}/{coverage?.summary?.cells ?? '—'} covered</span></div>
+    <section className="card"><header className="section-heading vendor-section-heading"><div><span className="eyebrow">MEAL SERVICE</span><h2>Dietary coverage by day and meal</h2><p className="muted">Compare expected servings with assigned vendor capacity.</p></div><StatusBadge tone={coverage?.summary?.cells==null?'neutral':coverage.summary.uncovered>0?'warning':'success'}>{coveredCount==null?'Coverage unavailable':`${coveredCount}/${coverage?.summary?.cells} covered`}</StatusBadge></header>
       {loading ? <LoadingState/> : coverage?.rows?.length ? <div className="table-scroll"><table><thead><tr><th>Day</th><th>Meal</th><th>Diet</th><th>People</th><th>Assigned capacity</th><th>Serving vendors</th><th>Coverage</th></tr></thead><tbody>{coverage.rows.map((row, i) => <tr key={`${row.day}-${row.meal}-${row.diet}-${i}`}><td>{row.day}</td><td>{row.meal}</td><td>{row.diet}</td><td>{row.headcount}</td><td>{row.capacity}</td><td>{row.servers?.join(', ') || 'None'}</td><td>{row.covered ? 'Covered' : row.gap === 'NO_VENDOR' ? 'No eligible vendor' : 'Capacity short'}</td></tr>)}</tbody></table></div> : <EmptyState>No coverage rows returned.</EmptyState>}
       {coverage?.summary?.uncovered > 0 && <p className="warning">{coverage.summary.uncovered} meal and diet cells have coverage gaps, affecting {coverage.summary.uncoveredHeadcount} expected servings.</p>}
     </section>
@@ -164,5 +151,5 @@ export default function Vendors({ user }) {
     <ConfirmDialog open={confirmInterrupt} title="Commit vendor interruption" busy={busy} onCancel={() => setConfirmInterrupt(false)} onConfirm={commitInterruption} confirmLabel="Commit interruption">
       <p>Vendor: <b>{preview?.summary?.vendor}</b></p><p>Coverage impact: <b>{preview?.summary?.worsenedCells ?? 0} cells worsened</b>.</p><p>Reason: {interruptForm.reason}</p><p className="muted">This records an interruption for the selected window and affects vendor coverage calculations.</p>
     </ConfirmDialog>
-  </>;
+  </div>;
 }

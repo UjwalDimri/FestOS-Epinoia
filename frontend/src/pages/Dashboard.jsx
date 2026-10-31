@@ -31,9 +31,9 @@ export default function Dashboard({ user }) {
   </div>
  {metricError&&<ErrorState error={`Metrics unavailable: ${metricError}`} retry={loadMetrics}/>}
   <section className="dashboard-feature">
-   <div className="feature-copy"><span className="feature-kicker">FESTIVAL READINESS</span><h3>Accommodation readiness</h3><p>Current placement against total accommodation demand.</p><div className="feature-foot"><span className="live-dot"/>Updated {updated?.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})||'when connected'}</div></div>
-   <div className="feature-art" aria-hidden="true"><div className="feature-orbit orbit-one"/><div className="feature-orbit orbit-two"/><div className="feature-orbit orbit-three"/><div className="feature-center"><span>FEST</span><b>’26</b></div><i className="feature-dot dot-one"/><i className="feature-dot dot-two"/><i className="feature-dot dot-three"/></div>
-   <div className="feature-progress"><div className="progress-label"><span>Accommodation readiness</span><b>{bedTotal!=null?`${readiness}%`:'Unavailable'}</b></div><div className="progress-track"><i style={{width:`${readiness}%`}}/></div><div className="progress-caption"><span>{placed==null?'Beds placed unavailable':`${displayNumber(placed)} beds placed`}</span><span>{unplaced==null?'Unplaced count unavailable':`${displayNumber(unplaced)} to place`}</span></div></div>
+   <div className="feature-copy"><span className="feature-kicker">LIVE OPERATIONS SNAPSHOT</span><h3>Accommodation readiness</h3><p>Placement progress across the active accommodation plan.</p><div className="feature-foot"><span className="live-dot"/>Updated {updated?.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})||'when connected'}</div></div>
+   <div className="readiness-visual" aria-hidden="true"><div className="readiness-orbit orbit-back"/><div className="readiness-orbit orbit-front"/><div className="readiness-ground"/><div className="readiness-stack"><div className="readiness-prism prism-one"><i className="prism-top"/><i className="prism-front"/><i className="prism-side"/></div><div className="readiness-prism prism-two"><i className="prism-top"/><i className="prism-front"/><i className="prism-side"/></div><div className="readiness-prism prism-three"><i className="prism-top"/><i className="prism-front"/><i className="prism-side"/></div></div><span className="readiness-spark spark-one"/><span className="readiness-spark spark-two"/></div>
+   <div className="feature-progress"><div className="progress-label"><span>Beds placed</span><b>{bedTotal!=null?`${readiness}%`:'Unavailable'}</b></div><div className="progress-track" role="progressbar" aria-label="Accommodation placement" aria-valuemin="0" aria-valuemax="100" aria-valuenow={bedTotal!=null?readiness:0}><i style={{width:`${readiness}%`}}/></div><div className="progress-caption"><span>{placed==null?'Beds placed unavailable':`${displayNumber(placed)} placed`}</span><span>{unplaced==null?'Unplaced count unavailable':`${displayNumber(unplaced)} awaiting placement`}</span></div></div>
   </section>
   <section className="overview-grid" aria-label="Festival overview metrics">
    <OverviewCard label="People registered" value={counts.people} note="Participants and escorts" tone="coral" icon="↗"/>
@@ -44,7 +44,7 @@ export default function Dashboard({ user }) {
   <section className="dashboard-lower-grid">
    <div className="dashboard-panel attendance-panel">
     <div className="dashboard-panel-head"><div><span className="eyebrow">CAPACITY & DEMAND</span><h3>Accommodation overview</h3></div><span className="panel-chip">{capacity.length?`${capacity.length} nights`:'No active plan'}</span></div>
-    {metricError&&!data?<div className="chart-empty"><span className="empty-ring">⌂</span><b>Accommodation data unavailable</b><span>Reconnect to the API, then refresh to load capacity data.</span></div>:!data&&metricBusy?<LoadingState/>:capacity.length?<div className="capacity-chart" role="img" aria-label="Bed demand and capacity by night">{capacity.slice(0,12).map((night,index)=>{const demand=number(night.demand),beds=number(night.capacity),demandHeight=Math.max(5,demand/maxDemand*100),bedHeight=Math.max(5,beds/maxDemand*100);return <div className="chart-column" key={night.night||index}><div className="chart-bars"><i className="bar-demand" style={{height:`${demandHeight}%`,animationDelay:`${index*35}ms`}}/><i className="bar-capacity" style={{height:`${bedHeight}%`,animationDelay:`${index*35+60}ms`}}/></div><span>{String(night.night||'').slice(5)||`N${index+1}`}</span></div>})}</div>:<div className="chart-empty"><span className="empty-ring">⌂</span><b>Accommodation data will appear here</b><span>Build a plan to see bed demand against available capacity.</span></div>}
+    {metricError&&!data?<div className="chart-empty"><span className="empty-ring">⌂</span><b>Accommodation data unavailable</b><span>Reconnect to the API, then refresh to load capacity data.</span></div>:!data&&metricBusy?<LoadingState/>:capacity.length?<CapacityChart nights={capacity.slice(0,12)} maxValue={maxDemand}/>:<div className="chart-empty"><span className="empty-ring">⌂</span><b>Accommodation data will appear here</b><span>Build a plan to see bed demand against available capacity.</span></div>}
     <div className="chart-legend"><span><i className="legend-demand"/>Beds needed</span><span><i className="legend-capacity"/>Beds available</span><span className="chart-summary">External spend <b>{money(metrics.externalCostINR)}</b></span></div>
    </div>
    <div className="dashboard-panel priorities-panel">
@@ -60,4 +60,27 @@ export default function Dashboard({ user }) {
  </div>;
 }
 
-function OverviewCard({label,value,note,tone,icon}){return <article className={`overview-card ${tone}`}><div className="overview-card-top"><span>{label}</span><i aria-hidden="true">{icon}</i></div><strong>{displayNumber(value)}</strong><small>{note}</small><span className="card-glint" aria-hidden="true"/></article>}
+function OverviewCard({label,value,note,tone,icon}){return <article className={`overview-card ${tone}`}><div className="overview-card-top"><span>{label}</span><i aria-hidden="true">{icon}</i></div><strong>{value==null?'—':Number(value).toLocaleString('en-IN')}</strong><small>{note}</small><span className="card-glint" aria-hidden="true"/></article>}
+
+function CapacityChart({nights,maxValue}){
+ const width=720,height=224,left=50,right=12,top=14,bottom=35,plotWidth=width-left-right,plotHeight=height-top-bottom;
+ const scale=10**Math.floor(Math.log10(Math.max(1,maxValue))),step=Math.max(1,Math.ceil(maxValue/(4*scale))*scale),axisMax=step*4;
+ const columnWidth=plotWidth/nights.length,barWidth=Math.min(15,columnWidth*.25),gap=Math.max(3,barWidth*.25);
+ const summary=nights.map((night,index)=>`${formatNight(night.night,index)}: ${number(night.demand).toLocaleString()} beds needed, ${number(night.capacity).toLocaleString()} available`).join('; ');
+ return <div className="capacity-chart-wrap"><svg className="capacity-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Bed demand and available capacity by night. ${summary}`}>
+  <title>Accommodation demand and available beds</title>
+  <desc>Daily beds needed compared with available capacity. Values are from the current accommodation plan.</desc>
+  {[0,1,2,3,4].map((tick)=>{const y=top+plotHeight-(tick/4)*plotHeight;return <g key={tick}><line className="chart-gridline" x1={left} x2={width-right} y1={y} y2={y}/><text className="chart-axis-label" x={left-9} y={y+3} textAnchor="end">{(step*tick).toLocaleString('en-IN')}</text></g>;})}
+  {nights.map((night,index)=>{
+   const center=left+columnWidth*(index+.5),demand=number(night.demand),available=number(night.capacity);
+   const demandHeight=Math.max(demand?2:0,demand/axisMax*plotHeight),availableHeight=Math.max(available?2:0,available/axisMax*plotHeight);
+   const x1=center-gap/2-barWidth,x2=center+gap/2,yDemand=top+plotHeight-demandHeight,yAvailable=top+plotHeight-availableHeight;
+   return <g key={night.night||index}>
+    <rect className="chart-demand-bar" x={x1} y={yDemand} width={barWidth} height={demandHeight} rx="3" style={{'--bar-delay':`${index*45}ms`}}><title>{formatNight(night.night,index)}: {demand.toLocaleString()} beds needed</title></rect>
+    <rect className="chart-capacity-bar" x={x2} y={yAvailable} width={barWidth} height={availableHeight} rx="3" style={{'--bar-delay':`${index*45+45}ms`}}><title>{formatNight(night.night,index)}: {available.toLocaleString()} beds available</title></rect>
+    <text className="chart-date-label" x={center} y={height-8} textAnchor="middle">{formatNight(night.night,index)}</text>
+   </g>;
+  })}
+ </svg></div>;
+}
+function formatNight(value,index){const match=String(value||'').match(/^(\d{4})-(\d\d)-(\d\d)/);if(!match)return `Night ${index+1}`;return new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3]))));}
