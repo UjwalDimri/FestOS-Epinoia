@@ -75,13 +75,13 @@ export default function App(){
  if(!user)return <><DemoBanner/><Login onLogin={setUser} sessionError={sessionError}/></>;
  const selected=PAGES.find(([key])=>key===page);
  const [,label,Page,,,group]=selected||[];
- const navigate=(key)=>{const path=PATH_BY_KEY[key];if(!path)return;window.history.pushState({},'',path);setPage(key);window.scrollTo({top:0,behavior:'auto'});};
+ const navigate=(key,query='')=>{const path=PATH_BY_KEY[key];if(!path)return;const target=query?`${path}?q=${encodeURIComponent(query)}`:path;window.history.pushState({},'',target);setPage(key);window.scrollTo({top:0,behavior:'auto'});};
  const signOut=()=>{setToken(null);setUser(null);setSessionError('');window.history.replaceState({},'','/');setPage('dashboard');};
  const visiblePages=PAGES.filter(([key])=>roleCanSee(user.role,key));
 
  return <AppShell user={user} page={page} pages={visiblePages} theme={theme} onToggleTheme={()=>setTheme(theme==='dark'?'light':'dark')} onNavigate={navigate} onSignOut={signOut}>
   <PermissionGate allowed={Boolean(selected)&&roleCanSee(user.role,page)}>
-   {selected?<ErrorBoundary key={page}>{['events','venues','scheduling','pulse'].includes(page)?<Page user={user}/>:<><PageHeader title={label} description={DESCRIPTIONS[page]} breadcrumbs={[{label:group},{label}]}/><Page user={user}/></>}</ErrorBoundary>:<ErrorState error="Page not found." retry={()=>navigate('dashboard')}/ >}
+   {selected?<ErrorBoundary key={`${page}:${window.location.search}`}>{['events','venues','scheduling','pulse'].includes(page)?<Page user={user}/>:<><PageHeader title={label} description={DESCRIPTIONS[page]} breadcrumbs={[{label:group},{label}]}/><Page user={user}/></>}</ErrorBoundary>:<ErrorState error="Page not found." retry={()=>navigate('dashboard')}/ >}
   </PermissionGate>
  </AppShell>;
 }

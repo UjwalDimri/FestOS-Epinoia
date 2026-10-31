@@ -106,8 +106,8 @@ export default function Login({ onLogin, sessionError }) {
         <div className="login-intro"><span className="context-label">TEAM SIGN IN</span><h2 id="login-title">Welcome back</h2><p>Use the account assigned to your festival role.</p></div>
         {sessionError && <p className="err" role="alert">{sessionError}</p>}
         <form className="card login-card" onSubmit={submit}>
-          <label className="form-field">Email<input autoComplete="username" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@festos.test" /></label>
-          <label className="form-field">Password<input autoComplete="current-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" /></label>
+          <label className="form-field">Email<input autoComplete="username" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="director@festos.test" /></label>
+          <label className="form-field">Password<input autoComplete="current-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="c1A1Omy5YmuDx0Dd" /></label>
           {err && <span className="err login-error" role="alert">{err}</span>}
           <button className="primary login-submit" type="submit" disabled={busy} aria-busy={busy}>{busy?<><span className="button-loader" aria-hidden="true"/>Signing in…</>:<><span>Sign in</span><i className="btn-sheen" aria-hidden="true"/></>}</button>
           <p className="login-help">Need access? Contact your festival administrator.</p>

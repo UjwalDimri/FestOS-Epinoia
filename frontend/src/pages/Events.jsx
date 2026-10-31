@@ -7,7 +7,7 @@ const localInput = (value) => { if(!value)return ''; const d=new Date(value); re
 const canWrite = (role) => ['festival_director','events_team'].includes(role);
 
 export default function Events({ user }) {
-  const [summary,setSummary]=useState(null),[rows,setRows]=useState([]),[query,setQuery]=useState(''),[status,setStatus]=useState(''),[page,setPage]=useState(1),[pages,setPages]=useState(1);
+  const [summary,setSummary]=useState(null),[rows,setRows]=useState([]),[query,setQuery]=useState(()=>new URLSearchParams(window.location.search).get('q')||''),[status,setStatus]=useState(''),[page,setPage]=useState(1),[pages,setPages]=useState(1);
   const [editing,setEditing]=useState(null),[selected,setSelected]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const writable=canWrite(user?.role);
   async function load(){try{const [s,d]=await Promise.all([api('/events/summary'),api(`/events?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}&page=${page}&limit=15`)]);setSummary(s);setRows(d.rows);setPages(Math.max(1,d.totalPages||1));setError('');}catch(e){setError(e.message);}}

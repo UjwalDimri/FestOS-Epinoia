@@ -14,6 +14,7 @@ const timeLabel = (value) => value ? new Date(value).toLocaleString() : '—';
 export default function Vendors({ user }) {
   const canManage = ['festival_director', 'food_coordinator'].includes(user?.role);
   const [vendors, setVendors] = useState([]), [incidents, setIncidents] = useState([]), [coverage, setCoverage] = useState(null);
+  const [directoryQuery, setDirectoryQuery] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
   const [form, setForm] = useState(blankForm()), [editing, setEditing] = useState(false), [selectedId, setSelectedId] = useState('');
   const [compliance, setCompliance] = useState(null), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
   const [interruptForm, setInterruptForm] = useState({ vendorId: '', from: '2026-10-31T07:00', to: '2026-10-31T09:00', reason: '' });
@@ -31,6 +32,7 @@ export default function Vendors({ user }) {
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  const visibleVendors = vendors.filter((vendor) => !directoryQuery.trim() || `${vendor.vendorId} ${vendor.name} ${vendor.menu} ${(vendor.dietaryTags || []).join(' ')}`.toLowerCase().includes(directoryQuery.trim().toLowerCase()));
 
   async function inspectVendor(vendorId) {
     setSelectedId(vendorId); setCompliance(null); setError('');
@@ -104,8 +106,8 @@ export default function Vendors({ user }) {
       </form>
     </section>}
 
-    <section className="card"><header className="section-heading vendor-section-heading"><div><span className="eyebrow">SUPPLIER RECORDS</span><h2>Vendor directory</h2><p className="muted">Compliance and payment actions are available according to your role.</p></div><span className="participant-result-count">{vendors.length} vendors</span></header>
-      {loading ? <LoadingState/> : vendors.length ? <div className="table-scroll"><table><thead><tr><th>Vendor</th><th>Menu and diet tags</th><th>Capacity / hours</th><th>Hygiene certificate</th><th>Settlement</th><th>Status</th><th>Actions</th></tr></thead><tbody>{vendors.map((v) => <tr key={v.vendorId}>
+    <section className="card"><header className="section-heading vendor-section-heading"><div><span className="eyebrow">SUPPLIER RECORDS</span><h2>Vendor directory</h2><p className="muted">Compliance and payment actions are available according to your role.</p></div><div className="row"><input aria-label="Search vendor directory" type="search" placeholder="Filter vendors" value={directoryQuery} onChange={(event) => setDirectoryQuery(event.target.value)}/><span className="participant-result-count">{visibleVendors.length} of {vendors.length} vendors</span></div></header>
+      {loading ? <LoadingState/> : visibleVendors.length ? <div className="table-scroll"><table><thead><tr><th>Vendor</th><th>Menu and diet tags</th><th>Capacity / hours</th><th>Hygiene certificate</th><th>Settlement</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visibleVendors.map((v) => <tr key={v.vendorId}>
         <td><b>{v.name}</b><div className="muted">{v.vendorId}</div></td><td>{v.menu}<div className="muted">{(v.dietaryTags || []).join(', ') || 'No dietary tags'}</div></td>
         <td>{v.capacity ?? '—'} per meal<div className="muted">{v.hours?.open || '—'}–{v.hours?.close || '—'}</div></td>
         <td>{v.certExpiry ? dateOnly(v.certExpiry) : <StatusBadge tone="warning">Certificate missing</StatusBadge>}<div className="muted">{v.certificateNumber || 'Certificate number unavailable'}</div></td>
